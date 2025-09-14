@@ -31,7 +31,7 @@ export const QUERIES = {
    */
   salesByUser: `
       query SalesByUser($userAddress: String!, $limit: Int) {
-        Account(where: { id: { _eq: $userAddress } }) {
+        Account(where: { address: { _eq: $userAddress } }) {
           id
           address
           salesAsOfferer(order_by: { timestamp: desc }, limit: $limit) {
@@ -49,7 +49,7 @@ export const QUERIES = {
    */
   salesByNFTContract: `
       query SalesByNFTContract($contractAddress: String!, $limit: Int) {
-        NFTContract(where: { id: { _eq: $contractAddress } }) {
+        NFTContract(where: { address: { _eq: $contractAddress } }) {
           id
           address
           sales(order_by: { timestamp: desc }, limit: $limit) {
@@ -66,7 +66,7 @@ export const QUERIES = {
       query SalesByNFTToken($contractAddress: String!, $tokenId: String!, $limit: Int) {
         NFTToken(
           where: { 
-            contract: { id: { _eq: $contractAddress } },
+            contract: { address: { _eq: $contractAddress } },
             tokenId: { _eq: $tokenId }
           }
         ) {
