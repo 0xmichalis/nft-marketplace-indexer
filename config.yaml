@@ -19,5 +19,14 @@ networks:
             field_selection:
               transaction_fields:
                 - hash
+      - name: SuperRareV1
+        address:
+          - "0x41a322b28d0ff354040e2cbc676f0320d8c8850d"
+        handler: src/SuperRareV1EventHandlers.ts
+        events:
+          - event: Sold(address buyer, address seller, uint256 amount, uint256 tokenId)
+            field_selection:
+              transaction_fields:
+                - hash
 unordered_multichain_mode: true
 preload_handlers: true

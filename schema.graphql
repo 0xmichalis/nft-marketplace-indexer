@@ -1,7 +1,8 @@
-type Seaport_OrderFulfilled {
+type Sale {
   id: ID!
   timestamp: BigInt!
   transactionHash: String!
+  market: String!
 
   offerer: String!
   recipient: String!

@@ -1,7 +1,4 @@
-/*
- * Please refer to https://docs.envio.dev for a thorough guide on all Envio indexer features
- */
-import { Seaport, Seaport_OrderFulfilled } from "generated";
+import { Seaport, Sale } from "generated";
 
 Seaport.OrderFulfilled.handler(async ({ event, context }) => {
   // Extract offer data into parallel arrays
@@ -34,11 +31,12 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
     considerationRecipients.push(receivedItem[4]);
   }
 
-  // Create the main OrderFulfilled entity with inlined parallel arrays
-  const orderFulfilledEntity: Seaport_OrderFulfilled = {
+  // Create the main Sale entity with inlined parallel arrays
+  const saleEntity: Sale = {
     id: `${event.chainId}_${event.transaction.hash}`,
     timestamp: BigInt(event.block.timestamp),
     transactionHash: event.transaction.hash,
+    market: "Seaport",
 
     offerer: event.params.offerer,
     recipient: event.params.recipient,
@@ -57,5 +55,5 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
     considerationRecipients,
   };
 
-  context.Seaport_OrderFulfilled.set(orderFulfilledEntity);
+  context.Sale.set(saleEntity);
 });
