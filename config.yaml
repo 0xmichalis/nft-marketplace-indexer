@@ -28,5 +28,14 @@ networks:
             field_selection:
               transaction_fields:
                 - hash
+      - name: SuperRareBazaar
+        address:
+          - "0x6D7c44773C52D396F43c2D511B81aa168E9a7a42"
+        handler: src/SuperRareBazaarEventHandlers.ts
+        events:
+          - event: AcceptOffer(address indexed originContract, address indexed bidder, address indexed seller, address currencyAddress, uint256 amount, uint256 tokenId, address[] splitAddresses, uint8[] splitRatios)
+            field_selection:
+              transaction_fields:
+                - hash
 unordered_multichain_mode: true
 preload_handlers: true
