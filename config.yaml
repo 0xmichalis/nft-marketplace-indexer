@@ -46,6 +46,15 @@ networks:
             field_selection:
               transaction_fields:
                 - hash
+      - name: KnownOrigin
+        address:
+          - "0xf11ED77fD65840b64602526DDC38311E9923c81B"
+        handler: src/KnownOriginEventHandlers.ts
+        events:
+          - event: BuyNowPurchased(uint256 indexed tokenId, address buyer, address currentOwner, uint256 price)
+            field_selection:
+              transaction_fields:
+                - hash
 output: generated
 unordered_multichain_mode: true
 preload_handlers: true
