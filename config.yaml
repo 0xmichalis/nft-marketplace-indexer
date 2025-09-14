@@ -37,6 +37,14 @@ networks:
             field_selection:
               transaction_fields:
                 - hash
+          - event: Sold(address indexed originContract, address indexed buyer, address indexed seller, address currencyAddress, uint256 amount, uint256 tokenId)
+            field_selection:
+              transaction_fields:
+                - hash
+          - event: AuctionSettled(address indexed contractAddress, address indexed bidder, address seller, uint256 indexed tokenId, address currencyAddress, uint256 amount)
+            field_selection:
+              transaction_fields:
+                - hash
       - name: SuperRareAuctionHouse
         address:
           - "0x8c9F364bf7a56Ed058fc63Ef81c6Cf09c833e656"
