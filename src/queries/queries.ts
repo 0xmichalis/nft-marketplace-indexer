@@ -4,13 +4,13 @@
 export const QUERY_FRAGMENTS = {
   orderFullDetails: `
       id
-      orderHash
       offerer
       recipient
       transactionHash
       timestamp
-      blockNumber
       offerTokens
+      nftContractIds
+      nftTokenIds
       offerIdentifiers
       offerAmounts
       offerItemTypes
@@ -92,71 +92,22 @@ export const QUERIES = {
         }
       }
     `,
-
-  /**
-   * Get all tokens for an NFT contract with their recent sales
-   */
-  nftContractWithTokens: `
-      query NFTContractWithTokens($contractAddress: String!, $limit: Int) {
-        NFTContract(where: { id: { _eq: $contractAddress } }) {
-          id
-          address
-          tokens(limit: $limit) {
-            id
-            tokenId
-            sales(order_by: { timestamp: desc }, limit: 5) {
-              ${QUERY_FRAGMENTS.orderFullDetails}
-            }
-          }
-        }
-      }
-    `,
-
-  /**
-   * Get user's complete trading activity in one query
-   */
-  userCompleteActivity: `
-      query UserCompleteActivity($userAddress: String!, $limit: Int) {
-        Account(where: { id: { _eq: $userAddress } }) {
-          id
-          address
-          salesAsOfferer(order_by: { timestamp: desc }, limit: $limit) {
-            ${QUERY_FRAGMENTS.orderFullDetails}
-            nftContract {
-              id
-              address
-            }
-            nftToken {
-              id
-              tokenId
-            }
-          }
-          salesAsRecipient(order_by: { timestamp: desc }, limit: $limit) {
-            ${QUERY_FRAGMENTS.orderFullDetails}
-            nftContract {
-              id
-              address
-            }
-            nftToken {
-              id
-              tokenId
-            }
-          }
-        }
-      }
-    `,
 };
 
 /**
  * Type definitions for query responses
  */
-export interface OrderFulfilledResponse {
+export interface Sale {
   id: string;
   timestamp: string;
   transactionHash: string;
+  market: string;
 
   offerer: string;
   recipient: string;
+
+  nftContractIds: string[];
+  nftTokenIds: string[];
 
   offerTokens: string[];
   offerIdentifiers: string[];
@@ -170,8 +121,8 @@ export interface OrderFulfilledResponse {
   considerationRecipients: string[];
 }
 
-export interface OrdersByUserResponse {
-  Seaport_OrderFulfilled: OrderFulfilledResponse[];
+export interface SalesByUserResponse {
+  sales: Sale[];
 }
 
 /**
@@ -180,14 +131,14 @@ export interface OrdersByUserResponse {
 export interface AccountWithSalesResponse {
   id: string;
   address: string;
-  salesAsOfferer: OrderFulfilledResponse[];
-  salesAsRecipient: OrderFulfilledResponse[];
+  salesAsOfferer: Sale[];
+  salesAsRecipient: Sale[];
 }
 
 export interface NFTContractWithSalesResponse {
   id: string;
   address: string;
-  sales: OrderFulfilledResponse[];
+  sales: Sale[];
 }
 
 export interface NFTTokenWithSalesResponse {
@@ -197,50 +148,40 @@ export interface NFTTokenWithSalesResponse {
     id: string;
     address: string;
   };
-  sales: OrderFulfilledResponse[];
+  sales_id: string[];
 }
 
 export interface SalesByUserResponse {
-  Account: AccountWithSalesResponse[];
+  account: AccountWithSalesResponse[];
 }
 
 export interface SalesByNFTContractResponse {
-  NFTContract: NFTContractWithSalesResponse[];
-  Sale: OrderFulfilledResponse[];
+  nftContract: NFTContractWithSalesResponse[];
+  sales: Sale[];
 }
 
 export interface SalesByNFTTokenResponse {
-  NFTToken: NFTTokenWithSalesResponse[];
-  Sale: OrderFulfilledResponse[];
+  nftToken: NFTTokenWithSalesResponse[];
+  sales: Sale[];
 }
 
 export interface NFTContractWithTokensResponse {
-  NFTContract: Array<{
+  nftContract: Array<{
     id: string;
     address: string;
     tokens: Array<{
       id: string;
       tokenId: string;
-      sales: OrderFulfilledResponse[];
+      sales: Sale[];
     }>;
   }>;
 }
 
 export interface UserCompleteActivityResponse {
-  Account: Array<{
+  account: Array<{
     id: string;
     address: string;
-    salesAsOfferer: Array<
-      OrderFulfilledResponse & {
-        nftContract?: { id: string; address: string };
-        nftToken?: { id: string; tokenId: string };
-      }
-    >;
-    salesAsRecipient: Array<
-      OrderFulfilledResponse & {
-        nftContract?: { id: string; address: string };
-        nftToken?: { id: string; tokenId: string };
-      }
-    >;
+    salesAsOfferer: Array<Sale>;
+    salesAsRecipient: Array<Sale>;
   }>;
 }

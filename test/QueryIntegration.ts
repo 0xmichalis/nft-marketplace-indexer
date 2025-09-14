@@ -6,7 +6,12 @@ import {
   isGraphQLEndpointAvailable,
   type IndexerGraphQLClient,
 } from "../src/graphqlclient/GraphQLClient";
-import { QUERIES, SalesByUserResponse, SalesByNFTContractResponse } from "../src/queries/queries";
+import {
+  QUERIES,
+  SalesByUserResponse,
+  SalesByNFTContractResponse,
+  SalesByNFTTokenResponse,
+} from "../src/queries/queries";
 
 dotenv.config();
 
@@ -45,13 +50,13 @@ describe("GraphQL Query Integration Tests", () => {
         limit: 3,
       });
 
-      console.log(`📊 Found ${result.Account.length} accounts matching user ${testUserAddress}`);
+      console.log(`📊 Found ${result.account.length} accounts matching user ${testUserAddress}`);
 
       // Verify we got valid data structure
-      assert(Array.isArray(result.Account), "Result should contain Account array");
+      assert(Array.isArray(result.account), "Result should contain Account array");
 
-      if (result.Account.length > 0) {
-        const account = result.Account[0];
+      if (result.account.length > 0) {
+        const account = result.account[0];
 
         // Verify account structure
         assert(typeof account.id === "string", "Account should have id");
@@ -105,7 +110,7 @@ describe("GraphQL Query Integration Tests", () => {
           });
           return {
             variation: addressVariation,
-            count: result.Account.length,
+            count: result.account.length,
           };
         })
       );
@@ -146,18 +151,18 @@ describe("GraphQL Query Integration Tests", () => {
         limit: 5,
       });
 
-      console.log(`🐵 Found ${result.NFTContract.length} BAYC contracts`);
+      console.log(`🐵 Found ${result.nftContract.length} BAYC contracts`);
 
-      assert(Array.isArray(result.NFTContract), "Result should contain NFTContract array");
+      assert(Array.isArray(result.nftContract), "Result should contain NFTContract array");
 
-      if (result.Sale && result.Sale.length > 0) {
+      if (result.sales && result.sales.length > 0) {
         // Check for BAYC in offer (being sold)
-        const baycInOffer = result.Sale.filter((order) =>
+        const baycInOffer = result.sales.filter((order) =>
           order.offerTokens.some((token) => token.toLowerCase() === baycContract.toLowerCase())
         );
 
         // Check for BAYC in consideration (being bought/traded for)
-        const baycInConsideration = result.Sale.filter((order) =>
+        const baycInConsideration = result.sales.filter((order) =>
           order.considerationTokens.some(
             (token) => token.toLowerCase() === baycContract.toLowerCase()
           )
@@ -167,7 +172,7 @@ describe("GraphQL Query Integration Tests", () => {
         console.log(`✅ Orders with BAYC in consideration (buying): ${baycInConsideration.length}`);
 
         // Show details for the latest order (regardless of offer/consideration)
-        const latestOrder = result.Sale[0];
+        const latestOrder = result.sales[0];
 
         // Check where BAYC appears in this order
         const baycInOfferIndex = latestOrder.offerTokens.findIndex(
@@ -194,6 +199,82 @@ describe("GraphQL Query Integration Tests", () => {
         console.log(
           `   Timestamp: ${new Date(parseInt(latestOrder.timestamp) * 1000).toISOString()}`
         );
+      }
+    });
+
+    /**
+     * Query: Find orders by specific NFT token (e.g., BAYC #1)
+     */
+    it("should find orders by specific NFT token", async function () {
+      if (!client) throw new Error("GraphQL client not initialized");
+
+      // Test with BAYC contract address and a specific token ID
+      const baycContract = "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D";
+      const testTokenId = "1"; // BAYC #1
+
+      const result = await client.query<SalesByNFTTokenResponse>(QUERIES.salesByNFTToken, {
+        contractAddress: baycContract.toLowerCase(),
+        tokenId: testTokenId,
+      });
+
+      console.log(`🎨 Found ${result.nftToken.length} NFT tokens for BAYC #${testTokenId}`);
+
+      // Verify we got valid data structure
+      assert(Array.isArray(result.nftToken), "Result should contain NFTToken array");
+
+      if (result.nftToken.length > 0) {
+        const nftToken = result.nftToken[0];
+
+        // Verify NFT token structure
+        assert(typeof nftToken.id === "string", "NFTToken should have id");
+        assert(typeof nftToken.tokenId === "string", "NFTToken should have tokenId");
+        assert(typeof nftToken.contract === "object", "NFTToken should have contract");
+        assert(typeof nftToken.contract.id === "string", "NFTToken contract should have id");
+        assert(
+          typeof nftToken.contract.address === "string",
+          "NFTToken contract should have address"
+        );
+        assert(Array.isArray(nftToken.sales_id), "NFTToken should have sales_id array");
+
+        console.log(`✅ NFT Token ID: ${nftToken.id}`);
+        console.log(`   Token ID: ${nftToken.tokenId}`);
+        console.log(`   Contract ID: ${nftToken.contract.id}`);
+        console.log(`   Contract Address: ${nftToken.contract.address}`);
+        console.log(`   Total Sales: ${nftToken.sales_id.length}`);
+      } else {
+        console.log(`ℹ️  No NFT token found for BAYC #${testTokenId}`);
+      }
+
+      // Check the Sale results
+      if (result.sales && result.sales.length > 0) {
+        console.log(`✅ Found ${result.sales.length} sales involving BAYC #${testTokenId}`);
+
+        const firstSale = result.sales[0];
+        console.log(`   First sale: ${firstSale.id}`);
+        console.log(`   Transaction: ${firstSale.transactionHash}`);
+        console.log(`   NFT Contract IDs: ${firstSale.nftContractIds.join(", ")}`);
+        console.log(`   NFT Token IDs: ${firstSale.nftTokenIds.join(", ")}`);
+
+        // Verify the sale contains the specific token we're looking for
+        const hasTargetToken = firstSale.nftTokenIds.some((tokenId) =>
+          tokenId.includes(testTokenId)
+        );
+
+        if (hasTargetToken) {
+          console.log(`✅ Sale contains target token ID: ${testTokenId}`);
+        } else {
+          console.log(`⚠️  Sale does not contain target token ID: ${testTokenId}`);
+        }
+
+        // Show details for the latest sale
+        console.log(`   Market: ${firstSale.market}`);
+        console.log(`   Offerer: ${firstSale.offerer}`);
+        console.log(`   Recipient: ${firstSale.recipient}`);
+        console.log(
+          `   Timestamp: ${new Date(parseInt(firstSale.timestamp) * 1000).toISOString()}`
+        );
+      } else {
+        console.log(`ℹ️  No sales found involving BAYC #${testTokenId}`);
       }
     });
   });
