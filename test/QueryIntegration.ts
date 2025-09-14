@@ -157,18 +157,20 @@ describe("GraphQL Query Integration Tests", () => {
 
       if (result.nftContract && result.nftContract.length > 0) {
         const nftContract = result.nftContract[0];
-        const sales = nftContract.sales || [];
+        const allSales = nftContract.tokens.flatMap((token) =>
+          token.sales.map((sale) => sale.sale)
+        );
 
-        if (sales.length > 0) {
+        if (allSales.length > 0) {
           // Check for BAYC in offer (being sold)
-          const baycInOffer = sales.filter((order: any) =>
+          const baycInOffer = allSales.filter((order: any) =>
             order.offerTokens.some(
               (token: any) => token.toLowerCase() === baycContract.toLowerCase()
             )
           );
 
           // Check for BAYC in consideration (being bought/traded for)
-          const baycInConsideration = sales.filter((order: any) =>
+          const baycInConsideration = allSales.filter((order: any) =>
             order.considerationTokens.some(
               (token: any) => token.toLowerCase() === baycContract.toLowerCase()
             )
@@ -180,14 +182,14 @@ describe("GraphQL Query Integration Tests", () => {
           );
 
           // Show details for the latest order (regardless of offer/consideration)
-          const latestOrder = sales[0];
+          const latestOrder = allSales[0];
 
           // Check where BAYC appears in this order
           const baycInOfferIndex = latestOrder.offerTokens.findIndex(
-            (token) => token.toLowerCase() === baycContract.toLowerCase()
+            (token: any) => token.toLowerCase() === baycContract.toLowerCase()
           );
           const baycInConsiderationIndex = latestOrder.considerationTokens.findIndex(
-            (token) => token.toLowerCase() === baycContract.toLowerCase()
+            (token: any) => token.toLowerCase() === baycContract.toLowerCase()
           );
 
           if (baycInOfferIndex >= 0) {
@@ -261,7 +263,7 @@ describe("GraphQL Query Integration Tests", () => {
       // Check the Sale results from the NFT token
       if (result.nftToken && result.nftToken.length > 0) {
         const nftToken = result.nftToken[0];
-        const sales = nftToken.sales || [];
+        const sales = nftToken.sales.map((sale) => sale.sale);
 
         if (sales.length > 0) {
           console.log(`✅ Found ${sales.length} sales involving BAYC #${testTokenId}`);
@@ -269,12 +271,20 @@ describe("GraphQL Query Integration Tests", () => {
           const firstSale = sales[0];
           console.log(`   First sale: ${firstSale.id}`);
           console.log(`   Transaction: ${firstSale.transactionHash}`);
-          console.log(`   NFT Contract IDs: ${firstSale.nftContractIds.join(", ")}`);
-          console.log(`   NFT Token IDs: ${firstSale.nftTokenIds.join(", ")}`);
+
+          // Show NFT data from junction entities
+          if (firstSale.nfts && firstSale.nfts.length > 0) {
+            const nftData = firstSale.nfts
+              .map((nft) => `${nft.nftToken.contract.address}:${nft.nftToken.tokenId}`)
+              .join(", ");
+            console.log(`   NFT Data: ${nftData}`);
+          }
 
           // Verify the sale contains the specific token we're looking for
-          const hasTargetToken = firstSale.nftTokenIds.some((tokenId) =>
-            tokenId.includes(testTokenId)
+          const hasTargetToken = firstSale.nfts?.some(
+            (nft) =>
+              nft.nftToken.tokenId === testTokenId &&
+              nft.nftToken.contract.address.toLowerCase() === baycContract.toLowerCase()
           );
 
           if (hasTargetToken) {

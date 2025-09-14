@@ -68,23 +68,27 @@ query SalesByNFTContract($contractAddress: String!) {
   NFTContract(where: { address: { _eq: $contractAddress } }) {
     id
     address
-    sales(order_by: { timestamp: desc }) {
-      id
-      timestamp
-      transactionHash
-      market
-      offerer {
-        address
+    tokens {
+      sales(order_by: { timestamp: desc }) {
+        sale {
+          id
+          timestamp
+          transactionHash
+          market
+          offerer {
+            address
+          }
+          recipient {
+            address
+          }
+          offerTokens
+          offerIdentifiers
+          offerAmounts
+          considerationTokens
+          considerationIdentifiers
+          considerationAmounts
+        }
       }
-      recipient {
-        address
-      }
-      offerTokens
-      offerIdentifiers
-      offerAmounts
-      considerationTokens
-      considerationIdentifiers
-      considerationAmounts
     }
   }
 }
@@ -106,22 +110,24 @@ query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
       address
     }
     sales(order_by: { timestamp: desc }) {
-      id
-      timestamp
-      transactionHash
-      market
-      offerer {
-        address
+      sale {
+        id
+        timestamp
+        transactionHash
+        market
+        offerer {
+          address
+        }
+        recipient {
+          address
+        }
+        offerTokens
+        offerIdentifiers
+        offerAmounts
+        considerationTokens
+        considerationIdentifiers
+        considerationAmounts
       }
-      recipient {
-        address
-      }
-      offerTokens
-      offerIdentifiers
-      offerAmounts
-      considerationTokens
-      considerationIdentifiers
-      considerationAmounts
     }
   }
 }

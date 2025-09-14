@@ -9,8 +9,6 @@ export const QUERY_FRAGMENTS = {
       transactionHash
       timestamp
       offerTokens
-      nftContractIds
-      nftTokenIds
       offerIdentifiers
       offerAmounts
       offerItemTypes
@@ -19,6 +17,18 @@ export const QUERY_FRAGMENTS = {
       considerationAmounts
       considerationItemTypes
       considerationRecipients
+      nfts {
+        id
+        nftToken {
+          id
+          tokenId
+          contract {
+            id
+            address
+          }
+        }
+        isOffer
+      }
     `,
 };
 
@@ -52,8 +62,12 @@ export const QUERIES = {
         NFTContract(where: { address: { _eq: $contractAddress } }) {
           id
           address
-          sales(order_by: { timestamp: desc }, limit: $limit) {
-            ${QUERY_FRAGMENTS.orderFullDetails}
+          tokens {
+            sales(order_by: { timestamp: desc }, limit: $limit) {
+              sale {
+                ${QUERY_FRAGMENTS.orderFullDetails}
+              }
+            }
           }
         }
       }
@@ -77,7 +91,9 @@ export const QUERIES = {
             address
           }
           sales(order_by: { timestamp: desc }, limit: $limit) {
-            ${QUERY_FRAGMENTS.orderFullDetails}
+            sale {
+              ${QUERY_FRAGMENTS.orderFullDetails}
+            }
           }
         }
       }
@@ -87,6 +103,19 @@ export const QUERIES = {
 /**
  * Type definitions for query responses
  */
+export interface SaleNFT {
+  id: string;
+  nftToken: {
+    id: string;
+    tokenId: string;
+    contract: {
+      id: string;
+      address: string;
+    };
+  };
+  isOffer: boolean;
+}
+
 export interface Sale {
   id: string;
   timestamp: string;
@@ -96,8 +125,7 @@ export interface Sale {
   offerer: string;
   recipient: string;
 
-  nftContractIds: string[];
-  nftTokenIds: string[];
+  nfts: SaleNFT[];
 
   offerTokens: string[];
   offerIdentifiers: string[];
@@ -128,7 +156,11 @@ export interface AccountWithSalesResponse {
 export interface NFTContractWithSalesResponse {
   id: string;
   address: string;
-  sales: Sale[];
+  tokens: Array<{
+    sales: Array<{
+      sale: Sale;
+    }>;
+  }>;
 }
 
 export interface NFTTokenWithSalesResponse {
@@ -138,7 +170,9 @@ export interface NFTTokenWithSalesResponse {
     id: string;
     address: string;
   };
-  sales: Sale[];
+  sales: Array<{
+    sale: Sale;
+  }>;
 }
 
 export interface SalesByUserResponse {
