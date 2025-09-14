@@ -6,12 +6,7 @@ import {
   isGraphQLEndpointAvailable,
   type IndexerGraphQLClient,
 } from "../src/graphqlclient/GraphQLClient";
-import {
-  QUERIES,
-  SalesByUserResponse,
-  SalesByNFTContractResponse,
-  OrderFulfilledResponse,
-} from "../src/queries/queries";
+import { QUERIES, SalesByUserResponse, SalesByNFTContractResponse } from "../src/queries/queries";
 
 dotenv.config();
 

@@ -12,12 +12,62 @@ _Please refer to the [documentation website](https://docs.envio.dev) for a thoro
 
 ### 1. User Activity Queries
 
-**Find orders by user address (offerer or recipient)**
+**Find orders by user address**
 
 ```graphql
-query OrdersByUser($userAddress: String!) {
-  Seaport_OrderFulfilled(
-    where: { _or: [{ offerer: { _ilike: $userAddress } }, { recipient: { _ilike: $userAddress } }] }
+query SalesByUser($userAddress: String!) {
+  Account(where: { id: { _eq: $userAddress } }) {
+    id
+    address
+    salesAsOfferer(order_by: { timestamp: desc }) {
+      id
+      timestamp
+      transactionHash
+      market
+      offerer
+      recipient
+      nftContractIds
+      nftTokenIds
+      offerTokens
+      offerIdentifiers
+      offerAmounts
+      considerationTokens
+      considerationIdentifiers
+      considerationAmounts
+    }
+    salesAsRecipient(order_by: { timestamp: desc }) {
+      id
+      timestamp
+      transactionHash
+      market
+      offerer
+      recipient
+      nftContractIds
+      nftTokenIds
+      offerTokens
+      offerIdentifiers
+      offerAmounts
+      considerationTokens
+      considerationIdentifiers
+      considerationAmounts
+    }
+  }
+}
+```
+
+### 2. NFT Contract Queries
+
+**Find all sales involving a specific NFT contract**
+
+```graphql
+query SalesByNFTContract($contractAddress: String!) {
+  NFTContract(where: { id: { _eq: $contractAddress } }) {
+    id
+    address
+    sales_id
+  }
+  Sale(
+    where: { nftContractIds: { _contains: [$contractAddress] } }
     order_by: { timestamp: desc }
   ) {
     id
@@ -26,6 +76,8 @@ query OrdersByUser($userAddress: String!) {
     market
     offerer
     recipient
+    nftContractIds
+    nftTokenIds
     offerTokens
     offerIdentifiers
     offerAmounts
@@ -36,27 +88,30 @@ query OrdersByUser($userAddress: String!) {
 }
 ```
 
-### 2. NFT-Specific Queries
+### 3. NFT Token Queries
 
-**Find orders by specific NFT contract**
+**Find all sales of a specific NFT token**
 
 ```graphql
-query OrdersByNFTContract($contractAddress: String!) {
-  Seaport_OrderFulfilled(
-    where: {
-      _or: [
-        { offerTokens: { _contains: [$contractAddress] } }
-        { considerationTokens: { _contains: [$contractAddress] } }
-      ]
+query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
+  NFTToken(where: { contract: { id: { _eq: $contractAddress } }, tokenId: { _eq: $tokenId } }) {
+    id
+    tokenId
+    contract {
+      id
+      address
     }
-    order_by: { timestamp: desc }
-  ) {
+    sales_id
+  }
+  Sale(where: { nftTokenIds: { _contains: [$tokenId] } }, order_by: { timestamp: desc }) {
     id
     timestamp
     transactionHash
     market
     offerer
     recipient
+    nftContractIds
+    nftTokenIds
     offerTokens
     offerIdentifiers
     offerAmounts
