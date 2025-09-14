@@ -13,7 +13,7 @@ networks:
     - '0x0000000000000aD24e80fd803C6ac37206a45f15' # Seaport 1.3
     - '0x00000000000006c7676171937C444f6BDe3D6282' # Seaport 1.2
     - '0x00000000006c3852cbEf3e08E8dF289169EdE581' # Seaport 1.1
-    handler: src/EventHandlers.ts
+    handler: src/SeaportEventHandlers.ts
     events:
     - event: OrderFulfilled(bytes32 orderHash, address indexed offerer, address indexed zone, address recipient, (uint8,address,uint256,uint256)[] offer, (uint8,address,uint256,uint256,address)[] consideration)
       field_selection:
