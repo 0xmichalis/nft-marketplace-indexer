@@ -37,6 +37,15 @@ networks:
             field_selection:
               transaction_fields:
                 - hash
+      - name: SuperRareAuctionHouse
+        address:
+          - "0x8c9F364bf7a56Ed058fc63Ef81c6Cf09c833e656"
+        handler: src/SuperRareAuctionHouseEventHandlers.ts
+        events:
+          - event: AuctionSettled(address indexed contractAddress, address indexed bidder, address seller, uint256 indexed tokenId, uint256 amount)
+            field_selection:
+              transaction_fields:
+                - hash
 output: generated
 unordered_multichain_mode: true
 preload_handlers: true
