@@ -1,9 +1,6 @@
-# Core entities with optimized relationships for fast queries
-
 type Account {
   id: ID! # wallet address (lowercase)
   address: String! # original case address
-  # Reverse lookups using @derivedFrom
   salesAsOfferer: [Sale!]! @derivedFrom(field: "offerer")
   salesAsRecipient: [Sale!]! @derivedFrom(field: "recipient")
 }
@@ -11,20 +8,18 @@ type Account {
 type NFTContract {
   id: ID! # contract address (lowercase)
   address: String! # original case address
-  # Reverse lookup for all tokens in this contract
+  # All tokens in this contract
   tokens: [NFTToken!]! @derivedFrom(field: "contract")
-
-  # Simple array of sale IDs involving this contract
-  sales_id: [String!]!
+  # All sales involving this contract
+  sales: [Sale!]! @derivedFrom(field: "nftContractIds")
 }
 
 type NFTToken {
   id: ID! # contract_address:token_id (lowercase)
   contract: NFTContract! # reference to parent contract
   tokenId: String!
-
-  # Simple array of sale IDs involving this specific token
-  sales_id: [String!]!
+  # All sales involving this specific token
+  sales: [Sale!]! @derivedFrom(field: "nftTokenIds")
 }
 
 type Sale {

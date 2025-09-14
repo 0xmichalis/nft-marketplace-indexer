@@ -16,7 +16,7 @@ _Please refer to the [documentation website](https://docs.envio.dev) for a thoro
 
 ```graphql
 query SalesByUser($userAddress: String!) {
-  Account(where: { id: { _eq: $userAddress } }) {
+  Account(where: { address: { _eq: $userAddress } }) {
     id
     address
     salesAsOfferer(order_by: { timestamp: desc }) {
@@ -69,33 +69,29 @@ query SalesByUser($userAddress: String!) {
 
 ```graphql
 query SalesByNFTContract($contractAddress: String!) {
-  NFTContract(where: { id: { _eq: $contractAddress } }) {
+  NFTContract(where: { address: { _eq: $contractAddress } }) {
     id
     address
-    sales_id
-  }
-  Sale(
-    where: { nftContractIds: { _contains: [$contractAddress] } }
-    order_by: { timestamp: desc }
-  ) {
-    id
-    timestamp
-    transactionHash
-    market
-    offerer {
-      address
+    sales(order_by: { timestamp: desc }) {
+      id
+      timestamp
+      transactionHash
+      market
+      offerer {
+        address
+      }
+      recipient {
+        address
+      }
+      nftContractIds
+      nftTokenIds
+      offerTokens
+      offerIdentifiers
+      offerAmounts
+      considerationTokens
+      considerationIdentifiers
+      considerationAmounts
     }
-    recipient {
-      address
-    }
-    nftContractIds
-    nftTokenIds
-    offerTokens
-    offerIdentifiers
-    offerAmounts
-    considerationTokens
-    considerationIdentifiers
-    considerationAmounts
   }
 }
 ```
@@ -106,34 +102,35 @@ query SalesByNFTContract($contractAddress: String!) {
 
 ```graphql
 query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
-  NFTToken(where: { contract: { id: { _eq: $contractAddress } }, tokenId: { _eq: $tokenId } }) {
+  NFTToken(
+    where: { contract: { address: { _eq: $contractAddress } }, tokenId: { _eq: $tokenId } }
+  ) {
     id
     tokenId
     contract {
       id
       address
     }
-    sales_id
-  }
-  Sale(where: { nftTokenIds: { _contains: [$tokenId] } }, order_by: { timestamp: desc }) {
-    id
-    timestamp
-    transactionHash
-    market
-    offerer {
-      address
+    sales(order_by: { timestamp: desc }) {
+      id
+      timestamp
+      transactionHash
+      market
+      offerer {
+        address
+      }
+      recipient {
+        address
+      }
+      nftContractIds
+      nftTokenIds
+      offerTokens
+      offerIdentifiers
+      offerAmounts
+      considerationTokens
+      considerationIdentifiers
+      considerationAmounts
     }
-    recipient {
-      address
-    }
-    nftContractIds
-    nftTokenIds
-    offerTokens
-    offerIdentifiers
-    offerAmounts
-    considerationTokens
-    considerationIdentifiers
-    considerationAmounts
   }
 }
 ```

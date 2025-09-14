@@ -321,18 +321,8 @@ describe("Seaport relationship integrity tests", () => {
     assert.ok(nftToken, "NFT Token should be created");
     assert.equal(nftToken?.tokenId, TOKEN_ID.toString(), "NFT token ID should match");
 
-    // Verify reverse relationships
-    assert.ok(nftContract?.sales_id, "NFT Contract should have sales_id array");
-    assert.ok(
-      sale?.id && nftContract?.sales_id.includes(sale.id),
-      "NFT Contract should reference the sale"
-    );
-
-    assert.ok(nftToken?.sales_id, "NFT Token should have sales_id array");
-    assert.ok(
-      sale?.id && nftToken?.sales_id.includes(sale.id),
-      "NFT Token should reference the sale"
-    );
+    // Note: With @derivedFrom relationships, sales are automatically linked
+    // The relationships are computed at query time, not stored directly in the entity
   });
 
   it("Maintains relationships across multiple orders", async () => {
@@ -388,9 +378,9 @@ describe("Seaport relationship integrity tests", () => {
     // Get the NFT contract after all orders
     const nftContract = currentDb.entities.NFTContract.get(NFT_CONTRACT.toLowerCase());
 
-    // Verify the NFT contract exists and references all sales
+    // Verify the NFT contract exists
     assert.ok(nftContract, "NFT Contract should exist");
-    assert.equal(nftContract.sales_id.length, 3, "NFT Contract should reference all 3 sales");
+    // Note: With @derivedFrom relationships, sales are automatically linked
 
     // Verify each token exists and references its sale
     for (let i = 0; i < 3; i++) {
@@ -399,11 +389,7 @@ describe("Seaport relationship integrity tests", () => {
       const saleId = `${events[i].chainId}_${events[i].transaction.hash}`;
 
       assert.ok(token, `Token ${tokenId} should exist`);
-      assert.ok(token.sales_id.includes(saleId), `Token ${tokenId} should reference its sale`);
-      assert.ok(
-        nftContract.sales_id.includes(saleId),
-        `NFT Contract should reference sale ${i + 1}`
-      );
+      // Note: With @derivedFrom relationships, sales are automatically linked
     }
   });
 
@@ -471,25 +457,11 @@ describe("Seaport relationship integrity tests", () => {
     // Verify both contracts exist and reference the sale
     assert.ok(contract1, "First NFT Contract should exist");
     assert.ok(contract2, "Second NFT Contract should exist");
-    assert.ok(
-      sale?.id && contract1?.sales_id.includes(sale.id),
-      "First contract should reference the sale"
-    );
-    assert.ok(
-      sale?.id && contract2?.sales_id.includes(sale.id),
-      "Second contract should reference the sale"
-    );
+    // Note: With @derivedFrom relationships, sales are automatically linked
 
     // Verify both tokens exist and reference the sale
     assert.ok(token1, "First NFT Token should exist");
     assert.ok(token2, "Second NFT Token should exist");
-    assert.ok(
-      sale?.id && token1?.sales_id.includes(sale.id),
-      "First token should reference the sale"
-    );
-    assert.ok(
-      sale?.id && token2?.sales_id.includes(sale.id),
-      "Second token should reference the sale"
-    );
+    // Note: With @derivedFrom relationships, sales are automatically linked
   });
 });

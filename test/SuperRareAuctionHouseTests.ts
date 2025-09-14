@@ -107,19 +107,8 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
       "Sale should reference the NFT token"
     );
 
-    // Testing that the NFT contract has the sales_id array populated
-    assert.ok(actualNFTContract?.sales_id, "NFT Contract should have sales_id array");
-    assert.ok(
-      actualSale?.id && actualNFTContract?.sales_id.includes(actualSale.id),
-      "NFT Contract should reference the sale"
-    );
-
-    // Testing that the NFT token has the sales_id array populated
-    assert.ok(actualNFTToken?.sales_id, "NFT Token should have sales_id array");
-    assert.ok(
-      actualSale?.id && actualNFTToken?.sales_id.includes(actualSale.id),
-      "NFT Token should reference the sale"
-    );
+    // Note: With @derivedFrom relationships, sales are automatically linked
+    // The relationships are computed at query time, not stored directly in the entity
   });
 
   it("Handles large token IDs correctly", async () => {
@@ -355,23 +344,19 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
     // Get the NFT contract after all sales
     const nftContract = currentDb.entities.NFTContract.get(NFT_CONTRACT.toLowerCase());
 
-    // Verify the NFT contract exists and references all sales
+    // Verify the NFT contract exists
     assert.ok(nftContract, "NFT Contract should exist");
-    assert.equal(nftContract.sales_id.length, 3, "NFT Contract should reference all 3 sales");
 
-    // Verify each token exists and references its sale
+    // Verify each token exists
     for (let i = 0; i < 3; i++) {
       const tokenId = (3000 + i).toString();
       const token = currentDb.entities.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:${tokenId}`);
-      const saleId = `${events[i].chainId}_${events[i].transaction.hash}`;
 
       assert.ok(token, `Token ${tokenId} should exist`);
-      assert.ok(token.sales_id.includes(saleId), `Token ${tokenId} should reference its sale`);
-      assert.ok(
-        nftContract.sales_id.includes(saleId),
-        `NFT Contract should reference sale ${i + 1}`
-      );
     }
+
+    // Note: With @derivedFrom relationships, sales are automatically linked
+    // The relationships are computed at query time, not stored directly in the entity
   });
 
   it("Handles case sensitivity in addresses", async () => {
@@ -566,9 +551,8 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
     assert.ok(token1, "Token 1 should exist");
     assert.ok(token2, "Token 2 should exist");
 
-    // Verify each contract only references its own sales
-    assert.equal(contract1.sales_id.length, 1, "Contract 1 should reference 1 sale");
-    assert.equal(contract2.sales_id.length, 1, "Contract 2 should reference 1 sale");
+    // Note: With @derivedFrom relationships, sales are automatically linked
+    // The relationships are computed at query time, not stored directly in the entity
 
     // Verify tokens exist and have correct IDs
     assert.equal(token1.tokenId, "100", "Token 1 should have correct token ID");

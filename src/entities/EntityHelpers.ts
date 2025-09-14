@@ -35,7 +35,6 @@ export async function getOrCreateNFTContract(
     contract = {
       id: contractId,
       address: contractAddress,
-      sales_id: [],
     };
     context.NFTContract.set(contract);
   }
@@ -60,32 +59,11 @@ export async function getOrCreateNFTToken(
       id: tokenKey,
       contract_id: contractId, // This will establish the relationship to NFTContract
       tokenId: tokenId,
-      sales_id: [],
     };
     context.NFTToken.set(token);
   }
 
   return token;
-}
-
-/**
- * Update NFTContract entity with new sale information
- */
-export function updateNFTContractWithSale(contract: NFTContract, saleId: string): NFTContract {
-  return {
-    ...contract,
-    sales_id: [...contract.sales_id, saleId],
-  };
-}
-
-/**
- * Update NFTToken entity with new sale information
- */
-export function updateNFTTokenWithSale(token: NFTToken, saleId: string): NFTToken {
-  return {
-    ...token,
-    sales_id: [...token.sales_id, saleId],
-  };
 }
 
 /**
@@ -145,7 +123,7 @@ export function extractNFTIds(
 }
 
 /**
- * Update NFT entities with new sale information
+ * Ensure NFT entities exist for a sale (relationships are handled via @derivedFrom)
  */
 export async function updateNFTEntitiesWithSale(
   context: any,
@@ -153,18 +131,14 @@ export async function updateNFTEntitiesWithSale(
   contractIds: string[],
   tokenIds: string[]
 ): Promise<void> {
-  // Update NFT contracts
+  // Ensure NFT contracts exist
   for (const contractId of contractIds) {
-    const contract = await getOrCreateNFTContract(context, contractId);
-    const updatedContract = updateNFTContractWithSale(contract, saleId);
-    context.NFTContract.set(updatedContract);
+    await getOrCreateNFTContract(context, contractId);
   }
 
-  // Update NFT tokens
+  // Ensure NFT tokens exist
   for (const tokenId of tokenIds) {
     const [contractAddress, tokenIdOnly] = tokenId.split(":");
-    const token = await getOrCreateNFTToken(context, contractAddress, tokenIdOnly);
-    const updatedToken = updateNFTTokenWithSale(token, saleId);
-    context.NFTToken.set(updatedToken);
+    await getOrCreateNFTToken(context, contractAddress, tokenIdOnly);
   }
 }

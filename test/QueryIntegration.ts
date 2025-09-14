@@ -155,50 +155,63 @@ describe("GraphQL Query Integration Tests", () => {
 
       assert(Array.isArray(result.nftContract), "Result should contain NFTContract array");
 
-      if (result.sales && result.sales.length > 0) {
-        // Check for BAYC in offer (being sold)
-        const baycInOffer = result.sales.filter((order) =>
-          order.offerTokens.some((token) => token.toLowerCase() === baycContract.toLowerCase())
-        );
+      if (result.nftContract && result.nftContract.length > 0) {
+        const nftContract = result.nftContract[0];
+        const sales = nftContract.sales || [];
 
-        // Check for BAYC in consideration (being bought/traded for)
-        const baycInConsideration = result.sales.filter((order) =>
-          order.considerationTokens.some(
+        if (sales.length > 0) {
+          // Check for BAYC in offer (being sold)
+          const baycInOffer = sales.filter((order: any) =>
+            order.offerTokens.some(
+              (token: any) => token.toLowerCase() === baycContract.toLowerCase()
+            )
+          );
+
+          // Check for BAYC in consideration (being bought/traded for)
+          const baycInConsideration = sales.filter((order: any) =>
+            order.considerationTokens.some(
+              (token: any) => token.toLowerCase() === baycContract.toLowerCase()
+            )
+          );
+
+          console.log(`✅ Orders with BAYC in offer (selling): ${baycInOffer.length}`);
+          console.log(
+            `✅ Orders with BAYC in consideration (buying): ${baycInConsideration.length}`
+          );
+
+          // Show details for the latest order (regardless of offer/consideration)
+          const latestOrder = sales[0];
+
+          // Check where BAYC appears in this order
+          const baycInOfferIndex = latestOrder.offerTokens.findIndex(
             (token) => token.toLowerCase() === baycContract.toLowerCase()
-          )
-        );
-
-        console.log(`✅ Orders with BAYC in offer (selling): ${baycInOffer.length}`);
-        console.log(`✅ Orders with BAYC in consideration (buying): ${baycInConsideration.length}`);
-
-        // Show details for the latest order (regardless of offer/consideration)
-        const latestOrder = result.sales[0];
-
-        // Check where BAYC appears in this order
-        const baycInOfferIndex = latestOrder.offerTokens.findIndex(
-          (token) => token.toLowerCase() === baycContract.toLowerCase()
-        );
-        const baycInConsiderationIndex = latestOrder.considerationTokens.findIndex(
-          (token) => token.toLowerCase() === baycContract.toLowerCase()
-        );
-
-        if (baycInOfferIndex >= 0) {
-          console.log(
-            `   BAYC in OFFER (selling) - Token ID: ${latestOrder.offerIdentifiers[baycInOfferIndex]}`
           );
-          console.log(`   Seller: ${latestOrder.offerer}`);
-        }
-
-        if (baycInConsiderationIndex >= 0) {
-          console.log(
-            `   BAYC in CONSIDERATION (buying) - Token ID: ${latestOrder.considerationIdentifiers[baycInConsiderationIndex]}`
+          const baycInConsiderationIndex = latestOrder.considerationTokens.findIndex(
+            (token) => token.toLowerCase() === baycContract.toLowerCase()
           );
-          console.log(`   Buyer: ${latestOrder.recipient}`);
-        }
 
-        console.log(
-          `   Timestamp: ${new Date(parseInt(latestOrder.timestamp) * 1000).toISOString()}`
-        );
+          if (baycInOfferIndex >= 0) {
+            console.log(
+              `   BAYC in OFFER (selling) - Token ID: ${latestOrder.offerIdentifiers[baycInOfferIndex]}`
+            );
+            console.log(`   Seller: ${latestOrder.offerer}`);
+          }
+
+          if (baycInConsiderationIndex >= 0) {
+            console.log(
+              `   BAYC in CONSIDERATION (buying) - Token ID: ${latestOrder.considerationIdentifiers[baycInConsiderationIndex]}`
+            );
+            console.log(`   Buyer: ${latestOrder.recipient}`);
+          }
+
+          console.log(
+            `   Timestamp: ${new Date(parseInt(latestOrder.timestamp) * 1000).toISOString()}`
+          );
+        } else {
+          console.log("❌ No sales found for BAYC contract");
+        }
+      } else {
+        console.log("❌ No BAYC contract found");
       }
     });
 
@@ -234,47 +247,54 @@ describe("GraphQL Query Integration Tests", () => {
           typeof nftToken.contract.address === "string",
           "NFTToken contract should have address"
         );
-        assert(Array.isArray(nftToken.sales_id), "NFTToken should have sales_id array");
+        assert(Array.isArray(nftToken.sales), "NFTToken should have sales array");
 
         console.log(`✅ NFT Token ID: ${nftToken.id}`);
         console.log(`   Token ID: ${nftToken.tokenId}`);
         console.log(`   Contract ID: ${nftToken.contract.id}`);
         console.log(`   Contract Address: ${nftToken.contract.address}`);
-        console.log(`   Total Sales: ${nftToken.sales_id.length}`);
+        console.log(`   Total Sales: ${nftToken.sales.length}`);
       } else {
         console.log(`ℹ️  No NFT token found for BAYC #${testTokenId}`);
       }
 
-      // Check the Sale results
-      if (result.sales && result.sales.length > 0) {
-        console.log(`✅ Found ${result.sales.length} sales involving BAYC #${testTokenId}`);
+      // Check the Sale results from the NFT token
+      if (result.nftToken && result.nftToken.length > 0) {
+        const nftToken = result.nftToken[0];
+        const sales = nftToken.sales || [];
 
-        const firstSale = result.sales[0];
-        console.log(`   First sale: ${firstSale.id}`);
-        console.log(`   Transaction: ${firstSale.transactionHash}`);
-        console.log(`   NFT Contract IDs: ${firstSale.nftContractIds.join(", ")}`);
-        console.log(`   NFT Token IDs: ${firstSale.nftTokenIds.join(", ")}`);
+        if (sales.length > 0) {
+          console.log(`✅ Found ${sales.length} sales involving BAYC #${testTokenId}`);
 
-        // Verify the sale contains the specific token we're looking for
-        const hasTargetToken = firstSale.nftTokenIds.some((tokenId) =>
-          tokenId.includes(testTokenId)
-        );
+          const firstSale = sales[0];
+          console.log(`   First sale: ${firstSale.id}`);
+          console.log(`   Transaction: ${firstSale.transactionHash}`);
+          console.log(`   NFT Contract IDs: ${firstSale.nftContractIds.join(", ")}`);
+          console.log(`   NFT Token IDs: ${firstSale.nftTokenIds.join(", ")}`);
 
-        if (hasTargetToken) {
-          console.log(`✅ Sale contains target token ID: ${testTokenId}`);
+          // Verify the sale contains the specific token we're looking for
+          const hasTargetToken = firstSale.nftTokenIds.some((tokenId) =>
+            tokenId.includes(testTokenId)
+          );
+
+          if (hasTargetToken) {
+            console.log(`✅ Sale contains target token ID: ${testTokenId}`);
+          } else {
+            console.log(`⚠️  Sale does not contain target token ID: ${testTokenId}`);
+          }
+
+          // Show details for the latest sale
+          console.log(`   Market: ${firstSale.market}`);
+          console.log(`   Offerer: ${firstSale.offerer}`);
+          console.log(`   Recipient: ${firstSale.recipient}`);
+          console.log(
+            `   Timestamp: ${new Date(parseInt(firstSale.timestamp) * 1000).toISOString()}`
+          );
         } else {
-          console.log(`⚠️  Sale does not contain target token ID: ${testTokenId}`);
+          console.log(`ℹ️  No sales found involving BAYC #${testTokenId}`);
         }
-
-        // Show details for the latest sale
-        console.log(`   Market: ${firstSale.market}`);
-        console.log(`   Offerer: ${firstSale.offerer}`);
-        console.log(`   Recipient: ${firstSale.recipient}`);
-        console.log(
-          `   Timestamp: ${new Date(parseInt(firstSale.timestamp) * 1000).toISOString()}`
-        );
       } else {
-        console.log(`ℹ️  No sales found involving BAYC #${testTokenId}`);
+        console.log(`ℹ️  No NFT token found for BAYC #${testTokenId}`);
       }
     });
   });

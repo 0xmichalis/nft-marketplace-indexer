@@ -23,11 +23,11 @@ export const QUERY_FRAGMENTS = {
 };
 
 /**
- * Common GraphQL queries - optimized using @derivedFrom relationships
+ * Common GraphQL queries
  */
 export const QUERIES = {
   /**
-   * Find sales by user address - OPTIMIZED using @derivedFrom relationships
+   * Find sales by user address
    */
   salesByUser: `
       query SalesByUser($userAddress: String!, $limit: Int) {
@@ -45,27 +45,22 @@ export const QUERIES = {
     `,
 
   /**
-   * Find sales by NFT contract - OPTIMIZED using array contains
+   * Find sales by NFT contract
    */
   salesByNFTContract: `
       query SalesByNFTContract($contractAddress: String!, $limit: Int) {
         NFTContract(where: { id: { _eq: $contractAddress } }) {
           id
           address
-          sales_id
-        }
-        Sale(
-          where: { nftContractIds: { _contains: [$contractAddress] } }
-          order_by: { timestamp: desc }
-          limit: $limit
-        ) {
-          ${QUERY_FRAGMENTS.orderFullDetails}
+          sales(order_by: { timestamp: desc }, limit: $limit) {
+            ${QUERY_FRAGMENTS.orderFullDetails}
+          }
         }
       }
     `,
 
   /**
-   * Find sales by specific NFT token - OPTIMIZED using array contains
+   * Find sales by specific NFT token
    */
   salesByNFTToken: `
       query SalesByNFTToken($contractAddress: String!, $tokenId: String!, $limit: Int) {
@@ -81,14 +76,9 @@ export const QUERIES = {
             id
             address
           }
-          sales_id
-        }
-        Sale(
-          where: { nftTokenIds: { _contains: [$tokenId] } }
-          order_by: { timestamp: desc }
-          limit: $limit
-        ) {
-          ${QUERY_FRAGMENTS.orderFullDetails}
+          sales(order_by: { timestamp: desc }, limit: $limit) {
+            ${QUERY_FRAGMENTS.orderFullDetails}
+          }
         }
       }
     `,
@@ -148,7 +138,7 @@ export interface NFTTokenWithSalesResponse {
     id: string;
     address: string;
   };
-  sales_id: string[];
+  sales: Sale[];
 }
 
 export interface SalesByUserResponse {
@@ -157,12 +147,10 @@ export interface SalesByUserResponse {
 
 export interface SalesByNFTContractResponse {
   nftContract: NFTContractWithSalesResponse[];
-  sales: Sale[];
 }
 
 export interface SalesByNFTTokenResponse {
   nftToken: NFTTokenWithSalesResponse[];
-  sales: Sale[];
 }
 
 export interface NFTContractWithTokensResponse {
