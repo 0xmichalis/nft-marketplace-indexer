@@ -389,3 +389,190 @@ export function printOrderSummary(order: any) {
   console.log(`  Offer items: ${order.offerItemTypes.length}`);
   console.log(`  Consideration items: ${order.considerationItemTypes.length}`);
 }
+
+/**
+ * SuperRare test utilities
+ */
+export const SUPER_RARE_CONTRACTS = {
+  SUPER_RARE_V1: "0x3333333333333333333333333333333333333333",
+  SUPER_RARE_BAZAAR: "0x4444444444444444444444444444444444444444",
+  TEST_NFT: "0x1111111111111111111111111111111111111111",
+} as const;
+
+/**
+ * Create a mock SuperRareBazaar AcceptOffer event
+ */
+export function createSuperRareBazaarAcceptOfferEvent(params: {
+  seller: string;
+  bidder: string;
+  originContract: string;
+  tokenId: bigint;
+  amount: bigint;
+  currencyAddress: string;
+  blockNumber?: number;
+  timestamp?: number;
+  transactionHash?: string;
+  chainId?: number;
+}) {
+  const {
+    seller,
+    bidder,
+    originContract,
+    tokenId,
+    amount,
+    currencyAddress,
+    blockNumber = 18500000,
+    timestamp = 1700000000,
+    transactionHash = "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+    chainId = 1,
+  } = params;
+
+  const { SuperRareBazaar } = TestHelpers;
+
+  return SuperRareBazaar.AcceptOffer.createMockEvent({
+    seller,
+    bidder,
+    originContract,
+    tokenId,
+    amount,
+    currencyAddress,
+    mockEventData: {
+      block: {
+        number: blockNumber,
+        timestamp,
+        hash: `0xblock${blockNumber}`,
+      },
+      transaction: {
+        hash: transactionHash,
+      },
+      chainId,
+      logIndex: 1,
+    },
+  });
+}
+
+/**
+ * Create a mock SuperRareV1 Sold event
+ */
+export function createSuperRareV1SoldEvent(params: {
+  seller: string;
+  buyer: string;
+  tokenId: bigint;
+  amount: bigint;
+  contractAddress: string;
+  blockNumber?: number;
+  timestamp?: number;
+  transactionHash?: string;
+  chainId?: number;
+}) {
+  const {
+    seller,
+    buyer,
+    tokenId,
+    amount,
+    contractAddress,
+    blockNumber = 18500000,
+    timestamp = 1700000000,
+    transactionHash = "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+    chainId = 1,
+  } = params;
+
+  const { SuperRareV1 } = TestHelpers;
+
+  return SuperRareV1.Sold.createMockEvent({
+    seller,
+    buyer,
+    tokenId,
+    amount,
+    mockEventData: {
+      block: {
+        number: blockNumber,
+        timestamp,
+        hash: `0xblock${blockNumber}`,
+      },
+      transaction: {
+        hash: transactionHash,
+      },
+      chainId,
+      logIndex: 1,
+      srcAddress: contractAddress,
+    },
+  });
+}
+
+/**
+ * Create a mock SuperRareBazaar AcceptOffer event with ETH payment
+ */
+export function createSuperRareBazaarETHSale(params: {
+  seller: string;
+  bidder: string;
+  originContract: string;
+  tokenId: bigint;
+  amountETH: number; // Amount in ETH (will be converted to wei)
+  blockNumber?: number;
+  timestamp?: number;
+  transactionHash?: string;
+  chainId?: number;
+}) {
+  return createSuperRareBazaarAcceptOfferEvent({
+    ...params,
+    amount: ethToWei(params.amountETH),
+    currencyAddress: TEST_ADDRESSES.ZERO_ADDRESS,
+  });
+}
+
+/**
+ * Create a mock SuperRareBazaar AcceptOffer event with ERC20 payment
+ */
+export function createSuperRareBazaarERC20Sale(params: {
+  seller: string;
+  bidder: string;
+  originContract: string;
+  tokenId: bigint;
+  amount: bigint;
+  erc20Token: string;
+  blockNumber?: number;
+  timestamp?: number;
+  transactionHash?: string;
+  chainId?: number;
+}) {
+  return createSuperRareBazaarAcceptOfferEvent({
+    ...params,
+    currencyAddress: params.erc20Token,
+  });
+}
+
+/**
+ * Create a mock SuperRareV1 Sold event with ETH payment
+ */
+export function createSuperRareV1ETHSale(params: {
+  seller: string;
+  buyer: string;
+  tokenId: bigint;
+  amountETH: number; // Amount in ETH (will be converted to wei)
+  contractAddress: string;
+  blockNumber?: number;
+  timestamp?: number;
+  transactionHash?: string;
+  chainId?: number;
+}) {
+  return createSuperRareV1SoldEvent({
+    ...params,
+    amount: ethToWei(params.amountETH),
+  });
+}
+
+/**
+ * Assert that two SuperRare sales are equal (for unit testing)
+ */
+export function assertSuperRareSalesEqual(actual: any, expected: any, message?: string) {
+  const assert = require("assert");
+
+  // Helper to normalize sales for comparison
+  const normalize = (sale: any) => ({
+    ...sale,
+    timestamp: sale.timestamp.toString(),
+  });
+
+  assert.deepEqual(normalize(actual), normalize(expected), message);
+}
