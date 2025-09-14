@@ -1,0 +1,23 @@
+# Build outputs
+build/
+generated/
+node_modules/
+dist/
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Generated files
+*.gen.ts
+*.res.js
+*.bs.js

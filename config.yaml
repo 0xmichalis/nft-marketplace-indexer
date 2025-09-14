@@ -2,22 +2,22 @@
 name: nft-marketplace-indexer
 event_decoder: viem
 networks:
-- id: 1
-  start_block: 0
-  contracts:
-  - name: Seaport
-    address:
-    - '0x0000000000000068F116a894984e2DB1123eB395' # Seaport 1.6
-    - '0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC' # Seaport 1.5
-    - '0x00000000000001ad428e4906aE43D8F9852d0dD6' # Seaport 1.4
-    - '0x0000000000000aD24e80fd803C6ac37206a45f15' # Seaport 1.3
-    - '0x00000000000006c7676171937C444f6BDe3D6282' # Seaport 1.2
-    - '0x00000000006c3852cbEf3e08E8dF289169EdE581' # Seaport 1.1
-    handler: src/SeaportEventHandlers.ts
-    events:
-    - event: OrderFulfilled(bytes32 orderHash, address indexed offerer, address indexed zone, address recipient, (uint8,address,uint256,uint256)[] offer, (uint8,address,uint256,uint256,address)[] consideration)
-      field_selection:
-        transaction_fields:
-          - hash
+  - id: 1
+    start_block: 0
+    contracts:
+      - name: Seaport
+        address:
+          - "0x0000000000000068F116a894984e2DB1123eB395" # Seaport 1.6
+          - "0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC" # Seaport 1.5
+          - "0x00000000000001ad428e4906aE43D8F9852d0dD6" # Seaport 1.4
+          - "0x0000000000000aD24e80fd803C6ac37206a45f15" # Seaport 1.3
+          - "0x00000000000006c7676171937C444f6BDe3D6282" # Seaport 1.2
+          - "0x00000000006c3852cbEf3e08E8dF289169EdE581" # Seaport 1.1
+        handler: src/SeaportEventHandlers.ts
+        events:
+          - event: OrderFulfilled(bytes32 orderHash, address indexed offerer, address indexed zone, address recipient, (uint8,address,uint256,uint256)[] offer, (uint8,address,uint256,uint256,address)[] consideration)
+            field_selection:
+              transaction_fields:
+                - hash
 unordered_multichain_mode: true
 preload_handlers: true

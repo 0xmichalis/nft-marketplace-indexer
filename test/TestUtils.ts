@@ -33,36 +33,49 @@ export const NFT_CONTRACTS = {
  * Seaport item types
  */
 export const ITEM_TYPES = {
-  NATIVE: 0,      // ETH
-  ERC721: 1,      // NFTs
-  ERC1155: 2,     // Semi-fungible tokens
-  ERC20: 3,       // Fungible tokens
+  NATIVE: 0, // ETH
+  ERC721: 1, // NFTs
+  ERC1155: 2, // Semi-fungible tokens
+  ERC20: 3, // Fungible tokens
 } as const;
 
 /**
  * Create a mock OrderFulfilled event with common defaults
  */
-export function createMockOrderEvent(overrides: Partial<{
-  orderHash: string;
-  offerer: string;
-  recipient: string;
-  offer: Array<[bigint, string, bigint, bigint]>;
-  consideration: Array<[bigint, string, bigint, bigint, string]>;
-  blockNumber: number;
-  timestamp: number;
-  transactionHash: string;
-  logIndex: number;
-  chainId: number;
-}> = {}) {
+export function createMockOrderEvent(
+  overrides: Partial<{
+    orderHash: string;
+    offerer: string;
+    recipient: string;
+    offer: Array<[bigint, string, bigint, bigint]>;
+    consideration: Array<[bigint, string, bigint, bigint, string]>;
+    blockNumber: number;
+    timestamp: number;
+    transactionHash: string;
+    logIndex: number;
+    chainId: number;
+  }> = {}
+) {
   const defaults = {
     orderHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
     offerer: TEST_ADDRESSES.SELLER_1,
     recipient: TEST_ADDRESSES.BUYER_1,
     offer: [
-      [BigInt(ITEM_TYPES.ERC721), NFT_CONTRACTS.TEST_NFT_1, 123n, 1n] as [bigint, string, bigint, bigint]
+      [BigInt(ITEM_TYPES.ERC721), NFT_CONTRACTS.TEST_NFT_1, 123n, 1n] as [
+        bigint,
+        string,
+        bigint,
+        bigint,
+      ],
     ],
     consideration: [
-      [BigInt(ITEM_TYPES.NATIVE), TEST_ADDRESSES.ZERO_ADDRESS, 0n, 1000000000000000000n, TEST_ADDRESSES.SELLER_1] as [bigint, string, bigint, bigint, string]
+      [
+        BigInt(ITEM_TYPES.NATIVE),
+        TEST_ADDRESSES.ZERO_ADDRESS,
+        0n,
+        1000000000000000000n,
+        TEST_ADDRESSES.SELLER_1,
+      ] as [bigint, string, bigint, bigint, string],
     ],
     blockNumber: 18500000,
     timestamp: 1700000000,
@@ -91,7 +104,7 @@ export function createMockOrderEvent(overrides: Partial<{
       },
       chainId: params.chainId,
       logIndex: params.logIndex,
-    }
+    },
   });
 }
 
@@ -110,11 +123,9 @@ export function createNFTSaleEvent(params: {
   return createMockOrderEvent({
     offerer: params.seller,
     recipient: params.buyer,
-    offer: [
-      [BigInt(ITEM_TYPES.ERC721), params.nftContract, params.tokenId, 1n]
-    ],
+    offer: [[BigInt(ITEM_TYPES.ERC721), params.nftContract, params.tokenId, 1n]],
     consideration: [
-      [BigInt(ITEM_TYPES.NATIVE), TEST_ADDRESSES.ZERO_ADDRESS, 0n, params.priceWei, params.seller]
+      [BigInt(ITEM_TYPES.NATIVE), TEST_ADDRESSES.ZERO_ADDRESS, 0n, params.priceWei, params.seller],
     ],
     blockNumber: params.blockNumber,
     timestamp: params.timestamp,
@@ -132,8 +143,9 @@ export function createBundleSaleEvent(params: {
   blockNumber?: number;
   timestamp?: number;
 }) {
-  const offer = params.nfts.map(nft => 
-    [BigInt(ITEM_TYPES.ERC721), nft.contract, nft.tokenId, 1n] as [bigint, string, bigint, bigint]
+  const offer = params.nfts.map(
+    (nft) =>
+      [BigInt(ITEM_TYPES.ERC721), nft.contract, nft.tokenId, 1n] as [bigint, string, bigint, bigint]
   );
 
   return createMockOrderEvent({
@@ -141,7 +153,7 @@ export function createBundleSaleEvent(params: {
     recipient: params.buyer,
     offer,
     consideration: [
-      [BigInt(ITEM_TYPES.NATIVE), TEST_ADDRESSES.ZERO_ADDRESS, 0n, params.priceWei, params.seller]
+      [BigInt(ITEM_TYPES.NATIVE), TEST_ADDRESSES.ZERO_ADDRESS, 0n, params.priceWei, params.seller],
     ],
     blockNumber: params.blockNumber,
     timestamp: params.timestamp,
@@ -165,12 +177,22 @@ export function createEventWithFees(params: {
   return createMockOrderEvent({
     offerer: params.seller,
     recipient: params.buyer,
-    offer: [
-      [BigInt(ITEM_TYPES.ERC721), params.nftContract, params.tokenId, 1n]
-    ],
+    offer: [[BigInt(ITEM_TYPES.ERC721), params.nftContract, params.tokenId, 1n]],
     consideration: [
-      [BigInt(ITEM_TYPES.NATIVE), TEST_ADDRESSES.ZERO_ADDRESS, 0n, params.priceWei - params.feeWei, params.seller],
-      [BigInt(ITEM_TYPES.NATIVE), TEST_ADDRESSES.ZERO_ADDRESS, 0n, params.feeWei, params.feeRecipient]
+      [
+        BigInt(ITEM_TYPES.NATIVE),
+        TEST_ADDRESSES.ZERO_ADDRESS,
+        0n,
+        params.priceWei - params.feeWei,
+        params.seller,
+      ],
+      [
+        BigInt(ITEM_TYPES.NATIVE),
+        TEST_ADDRESSES.ZERO_ADDRESS,
+        0n,
+        params.feeWei,
+        params.feeRecipient,
+      ],
     ],
     blockNumber: params.blockNumber,
     timestamp: params.timestamp,
@@ -182,14 +204,14 @@ export function createEventWithFees(params: {
  */
 export async function processEvents(events: any[], initialMockDb: any) {
   let currentDb = initialMockDb;
-  
+
   for (const event of events) {
     currentDb = await Seaport.OrderFulfilled.processEvent({
       event,
       mockDb: currentDb,
     });
   }
-  
+
   return currentDb;
 }
 
@@ -209,9 +231,10 @@ export function getAllOrders(mockDb: any) {
  */
 export function findOrdersByUser(mockDb: any, userAddress: string) {
   const orders = getAllOrders(mockDb);
-  return orders.filter(order => 
-    order.offerer.toLowerCase() === userAddress.toLowerCase() ||
-    order.recipient.toLowerCase() === userAddress.toLowerCase()
+  return orders.filter(
+    (order) =>
+      order.offerer.toLowerCase() === userAddress.toLowerCase() ||
+      order.recipient.toLowerCase() === userAddress.toLowerCase()
   );
 }
 
@@ -220,13 +243,14 @@ export function findOrdersByUser(mockDb: any, userAddress: string) {
  */
 export function findOrdersByNFTContract(mockDb: any, contractAddress: string) {
   const orders = getAllOrders(mockDb);
-  return orders.filter(order => 
-    order.offerTokens.some((token: string) => 
-      token.toLowerCase() === contractAddress.toLowerCase()
-    ) ||
-    order.considerationTokens.some((token: string) => 
-      token.toLowerCase() === contractAddress.toLowerCase()
-    )
+  return orders.filter(
+    (order) =>
+      order.offerTokens.some(
+        (token: string) => token.toLowerCase() === contractAddress.toLowerCase()
+      ) ||
+      order.considerationTokens.some(
+        (token: string) => token.toLowerCase() === contractAddress.toLowerCase()
+      )
   );
 }
 
@@ -235,7 +259,7 @@ export function findOrdersByNFTContract(mockDb: any, contractAddress: string) {
  */
 export function findOrdersByBlockRange(mockDb: any, startBlock: number, endBlock: number) {
   const orders = getAllOrders(mockDb);
-  return orders.filter(order => {
+  return orders.filter((order) => {
     const blockNumber = Number(order.blockNumber);
     return blockNumber >= startBlock && blockNumber <= endBlock;
   });
@@ -246,7 +270,7 @@ export function findOrdersByBlockRange(mockDb: any, startBlock: number, endBlock
  */
 export function findOrdersByTimeRange(mockDb: any, startTime: number, endTime: number) {
   const orders = getAllOrders(mockDb);
-  return orders.filter(order => {
+  return orders.filter((order) => {
     const timestamp = Number(order.timestamp);
     return timestamp >= startTime && timestamp <= endTime;
   });
@@ -257,9 +281,10 @@ export function findOrdersByTimeRange(mockDb: any, startTime: number, endTime: n
  */
 export function findNFTSales(mockDb: any) {
   const orders = getAllOrders(mockDb);
-  return orders.filter(order => 
-    order.offerItemTypes.includes(ITEM_TYPES.ERC721) ||
-    order.offerItemTypes.includes(ITEM_TYPES.ERC1155)
+  return orders.filter(
+    (order) =>
+      order.offerItemTypes.includes(ITEM_TYPES.ERC721) ||
+      order.offerItemTypes.includes(ITEM_TYPES.ERC1155)
   );
 }
 
@@ -289,7 +314,7 @@ export function sortOrdersByBlockNumber(orders: any[], ascending = false) {
  * Convert ETH wei to readable format for testing
  */
 export function weiToEth(wei: bigint | string): string {
-  const weiNum = typeof wei === 'string' ? BigInt(wei) : wei;
+  const weiNum = typeof wei === "string" ? BigInt(wei) : wei;
   return (Number(weiNum) / 1e18).toFixed(4);
 }
 
@@ -303,12 +328,15 @@ export function ethToWei(eth: number): bigint {
 /**
  * Generate a series of test events with incrementing timestamps and block numbers
  */
-export function generateTestEventSeries(count: number, baseParams: {
-  baseTimestamp?: number;
-  baseBlockNumber?: number;
-  timestampIncrement?: number;
-  blockIncrement?: number;
-}) {
+export function generateTestEventSeries(
+  count: number,
+  baseParams: {
+    baseTimestamp?: number;
+    baseBlockNumber?: number;
+    timestampIncrement?: number;
+    blockIncrement?: number;
+  }
+) {
   const {
     baseTimestamp = 1700000000,
     baseBlockNumber = 18500000,
@@ -317,16 +345,18 @@ export function generateTestEventSeries(count: number, baseParams: {
   } = baseParams;
 
   const events = [];
-  
+
   for (let i = 0; i < count; i++) {
-    events.push(createMockOrderEvent({
-      orderHash: `0x${i.toString().padStart(64, '0')}`,
-      blockNumber: baseBlockNumber + (i * blockIncrement),
-      timestamp: baseTimestamp + (i * timestampIncrement),
-      logIndex: i + 1,
-    }));
+    events.push(
+      createMockOrderEvent({
+        orderHash: `0x${i.toString().padStart(64, "0")}`,
+        blockNumber: baseBlockNumber + i * blockIncrement,
+        timestamp: baseTimestamp + i * timestampIncrement,
+        logIndex: i + 1,
+      })
+    );
   }
-  
+
   return events;
 }
 
@@ -334,15 +364,15 @@ export function generateTestEventSeries(count: number, baseParams: {
  * Assert that two orders are equal (for testing)
  */
 export function assertOrdersEqual(actual: any, expected: any, message?: string) {
-  const assert = require('assert');
-  
+  const assert = require("assert");
+
   // Helper to normalize orders for comparison
   const normalize = (order: any) => ({
     ...order,
     blockNumber: order.blockNumber.toString(),
     timestamp: order.timestamp.toString(),
   });
-  
+
   assert.deepEqual(normalize(actual), normalize(expected), message);
 }
 

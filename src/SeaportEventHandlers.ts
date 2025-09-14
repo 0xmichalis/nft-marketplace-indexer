@@ -1,10 +1,7 @@
 /*
  * Please refer to https://docs.envio.dev for a thorough guide on all Envio indexer features
  */
-import {
-  Seaport,
-  Seaport_OrderFulfilled,
-} from "generated";
+import { Seaport, Seaport_OrderFulfilled } from "generated";
 
 Seaport.OrderFulfilled.handler(async ({ event, context }) => {
   // Extract offer data into parallel arrays

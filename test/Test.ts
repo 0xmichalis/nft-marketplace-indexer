@@ -1,8 +1,5 @@
 import assert from "assert";
-import { 
-  TestHelpers,
-  Seaport_OrderFulfilled,
-} from "generated";
+import { TestHelpers, Seaport_OrderFulfilled } from "generated";
 const { MockDb, Seaport } = TestHelpers;
 
 describe("Seaport contract OrderFulfilled event tests", () => {
@@ -10,7 +7,9 @@ describe("Seaport contract OrderFulfilled event tests", () => {
   const mockDb = MockDb.createMockDb();
 
   // Creating mock for Seaport contract OrderFulfilled event
-  const event = Seaport.OrderFulfilled.createMockEvent({/* It mocks event fields with default values. You can overwrite them if you need */});
+  const event = Seaport.OrderFulfilled.createMockEvent({
+    /* It mocks event fields with default values. You can overwrite them if you need */
+  });
 
   it("Seaport_OrderFulfilled is created correctly", async () => {
     // Processing the event
@@ -21,7 +20,7 @@ describe("Seaport contract OrderFulfilled event tests", () => {
 
     // Getting the actual entity from the mock database
     let actualSeaportOrderFulfilled = mockDbUpdated.entities.Seaport_OrderFulfilled.get(
-      `${event.chainId}_${event.block.number}_${event.logIndex}`
+      `${event.chainId}_${event.transaction.hash}`
     );
 
     // Extract expected arrays from event data
@@ -55,12 +54,9 @@ describe("Seaport contract OrderFulfilled event tests", () => {
 
     // Creating the expected entity
     const expectedSeaportOrderFulfilled: Seaport_OrderFulfilled = {
-      id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-      orderHash: event.params.orderHash,
+      id: `${event.chainId}_${event.transaction.hash}`,
       offerer: event.params.offerer,
-      zone: event.params.zone,
       recipient: event.params.recipient,
-      blockNumber: BigInt(event.block.number),
       timestamp: BigInt(event.block.timestamp),
       transactionHash: event.transaction.hash,
       // Inline offer arrays
@@ -77,7 +73,11 @@ describe("Seaport contract OrderFulfilled event tests", () => {
     };
 
     // Asserting that the entity in the mock database is the same as the expected entity
-    assert.deepEqual(actualSeaportOrderFulfilled, expectedSeaportOrderFulfilled, "Actual SeaportOrderFulfilled should be the same as the expectedSeaportOrderFulfilled");
+    assert.deepEqual(
+      actualSeaportOrderFulfilled,
+      expectedSeaportOrderFulfilled,
+      "Actual SeaportOrderFulfilled should be the same as the expectedSeaportOrderFulfilled"
+    );
   });
 
   it("Offer arrays are populated correctly in OrderFulfilled", async () => {
@@ -89,22 +89,54 @@ describe("Seaport contract OrderFulfilled event tests", () => {
 
     // Getting the actual entity from the mock database
     let actualSeaportOrderFulfilled = mockDbUpdated.entities.Seaport_OrderFulfilled.get(
-      `${event.chainId}_${event.block.number}_${event.logIndex}`
+      `${event.chainId}_${event.transaction.hash}`
     );
 
     // Verify offer arrays have correct lengths
-    assert.equal(actualSeaportOrderFulfilled?.offerItemTypes.length, event.params.offer.length, "Offer item types array should have correct length");
-    assert.equal(actualSeaportOrderFulfilled?.offerTokens.length, event.params.offer.length, "Offer tokens array should have correct length");
-    assert.equal(actualSeaportOrderFulfilled?.offerIdentifiers.length, event.params.offer.length, "Offer identifiers array should have correct length");
-    assert.equal(actualSeaportOrderFulfilled?.offerAmounts.length, event.params.offer.length, "Offer amounts array should have correct length");
+    assert.equal(
+      actualSeaportOrderFulfilled?.offerItemTypes.length,
+      event.params.offer.length,
+      "Offer item types array should have correct length"
+    );
+    assert.equal(
+      actualSeaportOrderFulfilled?.offerTokens.length,
+      event.params.offer.length,
+      "Offer tokens array should have correct length"
+    );
+    assert.equal(
+      actualSeaportOrderFulfilled?.offerIdentifiers.length,
+      event.params.offer.length,
+      "Offer identifiers array should have correct length"
+    );
+    assert.equal(
+      actualSeaportOrderFulfilled?.offerAmounts.length,
+      event.params.offer.length,
+      "Offer amounts array should have correct length"
+    );
 
     // Check first offer item data if it exists
     if (event.params.offer.length > 0) {
       const spentItem = event.params.offer[0];
-      assert.equal(actualSeaportOrderFulfilled?.offerItemTypes[0], Number(spentItem[0]), "First offer item type should match");
-      assert.equal(actualSeaportOrderFulfilled?.offerTokens[0], spentItem[1], "First offer token should match");
-      assert.equal(actualSeaportOrderFulfilled?.offerIdentifiers[0], spentItem[2].toString(), "First offer identifier should match");
-      assert.equal(actualSeaportOrderFulfilled?.offerAmounts[0], spentItem[3].toString(), "First offer amount should match");
+      assert.equal(
+        actualSeaportOrderFulfilled?.offerItemTypes[0],
+        Number(spentItem[0]),
+        "First offer item type should match"
+      );
+      assert.equal(
+        actualSeaportOrderFulfilled?.offerTokens[0],
+        spentItem[1],
+        "First offer token should match"
+      );
+      assert.equal(
+        actualSeaportOrderFulfilled?.offerIdentifiers[0],
+        spentItem[2].toString(),
+        "First offer identifier should match"
+      );
+      assert.equal(
+        actualSeaportOrderFulfilled?.offerAmounts[0],
+        spentItem[3].toString(),
+        "First offer amount should match"
+      );
     }
   });
 
@@ -117,24 +149,64 @@ describe("Seaport contract OrderFulfilled event tests", () => {
 
     // Getting the actual entity from the mock database
     let actualSeaportOrderFulfilled = mockDbUpdated.entities.Seaport_OrderFulfilled.get(
-      `${event.chainId}_${event.block.number}_${event.logIndex}`
+      `${event.chainId}_${event.transaction.hash}`
     );
 
     // Verify consideration arrays have correct lengths
-    assert.equal(actualSeaportOrderFulfilled?.considerationItemTypes.length, event.params.consideration.length, "Consideration item types array should have correct length");
-    assert.equal(actualSeaportOrderFulfilled?.considerationTokens.length, event.params.consideration.length, "Consideration tokens array should have correct length");
-    assert.equal(actualSeaportOrderFulfilled?.considerationIdentifiers.length, event.params.consideration.length, "Consideration identifiers array should have correct length");
-    assert.equal(actualSeaportOrderFulfilled?.considerationAmounts.length, event.params.consideration.length, "Consideration amounts array should have correct length");
-    assert.equal(actualSeaportOrderFulfilled?.considerationRecipients.length, event.params.consideration.length, "Consideration recipients array should have correct length");
+    assert.equal(
+      actualSeaportOrderFulfilled?.considerationItemTypes.length,
+      event.params.consideration.length,
+      "Consideration item types array should have correct length"
+    );
+    assert.equal(
+      actualSeaportOrderFulfilled?.considerationTokens.length,
+      event.params.consideration.length,
+      "Consideration tokens array should have correct length"
+    );
+    assert.equal(
+      actualSeaportOrderFulfilled?.considerationIdentifiers.length,
+      event.params.consideration.length,
+      "Consideration identifiers array should have correct length"
+    );
+    assert.equal(
+      actualSeaportOrderFulfilled?.considerationAmounts.length,
+      event.params.consideration.length,
+      "Consideration amounts array should have correct length"
+    );
+    assert.equal(
+      actualSeaportOrderFulfilled?.considerationRecipients.length,
+      event.params.consideration.length,
+      "Consideration recipients array should have correct length"
+    );
 
     // Check first consideration item data if it exists
     if (event.params.consideration.length > 0) {
       const receivedItem = event.params.consideration[0];
-      assert.equal(actualSeaportOrderFulfilled?.considerationItemTypes[0], Number(receivedItem[0]), "First consideration item type should match");
-      assert.equal(actualSeaportOrderFulfilled?.considerationTokens[0], receivedItem[1], "First consideration token should match");
-      assert.equal(actualSeaportOrderFulfilled?.considerationIdentifiers[0], receivedItem[2].toString(), "First consideration identifier should match");
-      assert.equal(actualSeaportOrderFulfilled?.considerationAmounts[0], receivedItem[3].toString(), "First consideration amount should match");
-      assert.equal(actualSeaportOrderFulfilled?.considerationRecipients[0], receivedItem[4], "First consideration recipient should match");
+      assert.equal(
+        actualSeaportOrderFulfilled?.considerationItemTypes[0],
+        Number(receivedItem[0]),
+        "First consideration item type should match"
+      );
+      assert.equal(
+        actualSeaportOrderFulfilled?.considerationTokens[0],
+        receivedItem[1],
+        "First consideration token should match"
+      );
+      assert.equal(
+        actualSeaportOrderFulfilled?.considerationIdentifiers[0],
+        receivedItem[2].toString(),
+        "First consideration identifier should match"
+      );
+      assert.equal(
+        actualSeaportOrderFulfilled?.considerationAmounts[0],
+        receivedItem[3].toString(),
+        "First consideration amount should match"
+      );
+      assert.equal(
+        actualSeaportOrderFulfilled?.considerationRecipients[0],
+        receivedItem[4],
+        "First consideration recipient should match"
+      );
     }
   });
 });

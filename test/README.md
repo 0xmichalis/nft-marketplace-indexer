@@ -7,6 +7,7 @@ This directory contains integration tests that run real GraphQL queries against 
 ### Set Up Environment
 
 **Option 1: Using .env file (Recommended)**
+
 ```bash
 # Copy the example file
 cp env.example .env
@@ -16,11 +17,13 @@ cp env.example .env
 ```
 
 **Option 2: Direct environment variable**
+
 ```bash
 export GRAPH_API_URL="https://your-indexer-endpoint.com/graphql"
 ```
 
 ### Run Tests
+
 ```bash
 # Run all tests
 pnpm test
@@ -61,15 +64,11 @@ test/
 ### 1. User Activity Queries
 
 **Find orders by user address (offerer or recipient)**
+
 ```graphql
 query OrdersByUser($userAddress: String!, $limit: Int) {
   Seaport_OrderFulfilled(
-    where: {
-      _or: [
-        { offerer: { _ilike: $userAddress } },
-        { recipient: { _ilike: $userAddress } }
-      ]
-    }
+    where: { _or: [{ offerer: { _ilike: $userAddress } }, { recipient: { _ilike: $userAddress } }] }
     order_by: { timestamp: desc }
     limit: $limit
   ) {
@@ -85,6 +84,7 @@ query OrdersByUser($userAddress: String!, $limit: Int) {
 ```
 
 **Test Coverage:**
+
 - ✅ Finds orders where user is offerer or recipient
 - ✅ Case-insensitive address matching
 - ✅ Timestamp ordering validation
@@ -92,25 +92,27 @@ query OrdersByUser($userAddress: String!, $limit: Int) {
 
 ### 2. NFT-Specific Queries
 
-  **Find orders by specific NFT contract (in offer OR consideration)**
-  ```graphql
-  query OrdersByNFTContract($contractAddress: String!, $limit: Int) {
-    Seaport_OrderFulfilled(
-      where: {
-        _or: [
-          { offerTokens: { _contains: [$contractAddress] } },
-          { considerationTokens: { _contains: [$contractAddress] } }
-        ]
-      }
-      order_by: { timestamp: desc }
-      limit: $limit
-    ) {
-      # ... fields
+**Find orders by specific NFT contract (in offer OR consideration)**
+
+```graphql
+query OrdersByNFTContract($contractAddress: String!, $limit: Int) {
+  Seaport_OrderFulfilled(
+    where: {
+      _or: [
+        { offerTokens: { _contains: [$contractAddress] } },
+        { considerationTokens: { _contains: [$contractAddress] } }
+      ]
     }
+    order_by: { timestamp: desc }
+    limit: $limit
+  ) {
+    # ... fields
   }
-  ```
-  
-  **Use Cases:**
-  - NFT sales: Contract appears in `offerTokens` (seller offering NFT)
-  - NFT purchases/trades: Contract appears in `considerationTokens` (buyer requesting NFT)
-  - Complex trades: NFT-for-NFT swaps where contract could be in either position
+}
+```
+
+**Use Cases:**
+
+- NFT sales: Contract appears in `offerTokens` (seller offering NFT)
+- NFT purchases/trades: Contract appears in `considerationTokens` (buyer requesting NFT)
+- Complex trades: NFT-for-NFT swaps where contract could be in either position

@@ -12,7 +12,9 @@
     "codegen": "envio codegen",
     "dev": "envio dev",
     "start": "envio start",
-    "test": "pnpm mocha"
+    "test": "pnpm mocha",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@types/chai": "^4.3.11",
@@ -23,6 +25,7 @@
     "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",
     "mocha": "10.2.0",
+    "prettier": "^3.6.2",
     "ts-mocha": "^10.0.0",
     "typescript": "5.2.2"
   },

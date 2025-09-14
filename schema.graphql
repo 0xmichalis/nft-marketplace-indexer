@@ -5,13 +5,13 @@ type Seaport_OrderFulfilled {
 
   offerer: String!
   recipient: String!
-  
+
   # Offer items as parallel arrays
   offerItemTypes: [Int!]!
   offerTokens: [String!]!
   offerIdentifiers: [String!]!
   offerAmounts: [String!]!
-  
+
   # Consideration items as parallel arrays
   considerationItemTypes: [Int!]!
   considerationTokens: [String!]!
