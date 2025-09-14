@@ -1,7 +1,7 @@
 /**
  * Helper functions for creating and updating entities with relationships
  */
-import { Account, NFTContract, NFTToken } from "generated";
+import { Account, NFTContract, NFTToken, SaleNFT } from "generated";
 
 /**
  * Get or create an Account entity
@@ -123,22 +123,30 @@ export function extractNFTIds(
 }
 
 /**
- * Ensure NFT entities exist for a sale (relationships are handled via @derivedFrom)
+ * Create SaleNFT junction entities for a sale
  */
-export async function updateNFTEntitiesWithSale(
+export async function createSaleNFTJunctions(
   context: any,
   saleId: string,
-  contractIds: string[],
-  tokenIds: string[]
+  nftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }>,
+  isOffer: boolean
 ): Promise<void> {
-  // Ensure NFT contracts exist
-  for (const contractId of contractIds) {
-    await getOrCreateNFTContract(context, contractId);
-  }
+  for (const nftItem of nftItems) {
+    const { contractAddress, tokenId } = nftItem;
 
-  // Ensure NFT tokens exist
-  for (const tokenId of tokenIds) {
-    const [contractAddress, tokenIdOnly] = tokenId.split(":");
-    await getOrCreateNFTToken(context, contractAddress, tokenIdOnly);
+    // Ensure NFT contract and token exist
+    await getOrCreateNFTContract(context, contractAddress);
+    const nftToken = await getOrCreateNFTToken(context, contractAddress, tokenId);
+
+    // Create SaleNFT junction entity
+    const saleNftId = `${saleId}:${nftToken.id}`;
+    const saleNft: SaleNFT = {
+      id: saleNftId,
+      sale_id: saleId,
+      nftToken_id: nftToken.id,
+      isOffer: isOffer,
+    };
+
+    context.SaleNFT.set(saleNft);
   }
 }

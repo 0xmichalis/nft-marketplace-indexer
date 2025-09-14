@@ -62,11 +62,12 @@ describe("KnownOrigin BuyNowPurchased event tests", () => {
     assert.equal(actualSale.offerer_id, SELLER_ADDRESS.toLowerCase());
     assert.equal(actualSale.recipient_id, BUYER_ADDRESS.toLowerCase());
 
-    // Assertions for NFT data
-    assert.equal(actualSale.nftContractIds.length, 1);
-    assert.equal(actualSale.nftContractIds[0], KNOWNORIGIN_CONTRACT.toLowerCase());
-    assert.equal(actualSale.nftTokenIds.length, 1);
-    assert.equal(actualSale.nftTokenIds[0], `${KNOWNORIGIN_CONTRACT.toLowerCase()}:123`);
+    // Assertions for NFT data via junction entity
+    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale.id);
+    assert.equal(saleNfts.length, 1);
+    assert.equal(saleNfts[0].nftToken_id, `${KNOWNORIGIN_CONTRACT.toLowerCase()}:123`);
+    assert.equal(saleNfts[0].isOffer, true);
 
     // Assertions for offer items (NFT being sold)
     assert.equal(actualSale.offerItemTypes.length, 1);
@@ -146,7 +147,12 @@ describe("KnownOrigin BuyNowPurchased event tests", () => {
     // Assertions for the Sale entity
     assert(actualSale, "Sale should be created");
     assert.equal(actualSale.considerationAmounts[0], "2500000000000000000");
-    assert.equal(actualSale.nftTokenIds[0], `${KNOWNORIGIN_CONTRACT.toLowerCase()}:456`);
+
+    // Check NFT data via junction entity
+    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale.id);
+    assert.equal(saleNfts.length, 1);
+    assert.equal(saleNfts[0].nftToken_id, `${KNOWNORIGIN_CONTRACT.toLowerCase()}:456`);
   });
 
   it("Multiple sales are handled correctly", async () => {
@@ -215,7 +221,14 @@ describe("KnownOrigin BuyNowPurchased event tests", () => {
     assert(actualSale1, "First sale should be created");
     assert(actualSale2, "Second sale should be created");
     assert.notEqual(actualSale1.id, actualSale2.id, "Sales should have different IDs");
-    assert.equal(actualSale1.nftTokenIds[0], `${KNOWNORIGIN_CONTRACT.toLowerCase()}:789`);
-    assert.equal(actualSale2.nftTokenIds[0], `${KNOWNORIGIN_CONTRACT.toLowerCase()}:101112`);
+
+    // Check NFT data via junction entities
+    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const saleNfts1 = allSaleNfts.filter((sn) => sn.sale_id === actualSale1.id);
+    const saleNfts2 = allSaleNfts.filter((sn) => sn.sale_id === actualSale2.id);
+    assert.equal(saleNfts1.length, 1);
+    assert.equal(saleNfts1[0].nftToken_id, `${KNOWNORIGIN_CONTRACT.toLowerCase()}:789`);
+    assert.equal(saleNfts2.length, 1);
+    assert.equal(saleNfts2[0].nftToken_id, `${KNOWNORIGIN_CONTRACT.toLowerCase()}:101112`);
   });
 });

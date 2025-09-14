@@ -10,16 +10,14 @@ type NFTContract {
   address: String! # original case address
   # All tokens in this contract
   tokens: [NFTToken!]! @derivedFrom(field: "contract")
-  # All sales involving this contract
-  sales: [Sale!]! @derivedFrom(field: "nftContractIds")
 }
 
 type NFTToken {
   id: ID! # contract_address:token_id (lowercase)
   contract: NFTContract! # reference to parent contract
   tokenId: String!
-  # All sales involving this specific token
-  sales: [Sale!]! @derivedFrom(field: "nftTokenIds")
+  # All sales involving this specific token via junction entity
+  sales: [SaleNFT!]! @derivedFrom(field: "nftToken")
 }
 
 type Sale {
@@ -31,9 +29,9 @@ type Sale {
   offerer: Account!
   recipient: Account!
 
-  # Arrays of NFT contract and token IDs involved in this sale
-  nftContractIds: [String!]! # contract addresses involved
-  nftTokenIds: [String!]! # contract:tokenId combinations involved
+  # NFT relationships via junction entity
+  nfts: [SaleNFT!]! @derivedFrom(field: "sale")
+
   # Offer items as parallel arrays
   offerItemTypes: [Int!]!
   offerTokens: [String!]!
@@ -46,4 +44,11 @@ type Sale {
   considerationIdentifiers: [String!]!
   considerationAmounts: [String!]!
   considerationRecipients: [String!]!
+}
+
+type SaleNFT {
+  id: ID! # saleId:nftTokenId
+  sale: Sale!
+  nftToken: NFTToken!
+  isOffer: Boolean! # true if this NFT was in the offer, false if in consideration
 }

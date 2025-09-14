@@ -56,8 +56,6 @@ describe("Seaport contract OrderFulfilled event tests", () => {
       market: "Seaport",
       offerer_id: event.params.offerer.toLowerCase(),
       recipient_id: event.params.recipient.toLowerCase(),
-      nftContractIds: [],
-      nftTokenIds: [],
       timestamp: BigInt(event.block.timestamp),
       transactionHash: event.transaction.hash,
       // Inline offer arrays
@@ -305,15 +303,12 @@ describe("Seaport relationship integrity tests", () => {
       `${NFT_CONTRACT.toLowerCase()}:${TOKEN_ID.toString()}`
     );
 
-    // Verify sale references NFT entities
-    assert.ok(
-      sale?.nftContractIds.includes(NFT_CONTRACT),
-      "Sale should reference the NFT contract"
-    );
-    assert.ok(
-      sale?.nftTokenIds.includes(`${NFT_CONTRACT.toLowerCase()}:${TOKEN_ID.toString()}`),
-      "Sale should reference the NFT token"
-    );
+    // Verify sale references NFT entities via junction entity
+    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === sale?.id);
+    assert.equal(saleNfts.length, 1, "Sale should have one NFT");
+    assert.equal(saleNfts[0].nftToken_id, `${NFT_CONTRACT.toLowerCase()}:${TOKEN_ID.toString()}`);
+    assert.equal(saleNfts[0].isOffer, true, "NFT should be in offer");
 
     // Verify NFT entities exist
     assert.ok(nftContract, "NFT Contract should be created");
@@ -436,21 +431,18 @@ describe("Seaport relationship integrity tests", () => {
     const token1 = mockDbUpdated.entities.NFTToken.get(`${NFT_CONTRACT_1.toLowerCase()}:100`);
     const token2 = mockDbUpdated.entities.NFTToken.get(`${NFT_CONTRACT_2.toLowerCase()}:200`);
 
-    // Verify sale references both NFT contracts and tokens
+    // Verify sale references both NFT contracts and tokens via junction entities
+    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === sale?.id);
+    assert.equal(saleNfts.length, 2, "Sale should have two NFTs");
+
+    const nftTokenIds = saleNfts.map((sn: any) => sn.nftToken_id);
     assert.ok(
-      sale?.nftContractIds.includes(NFT_CONTRACT_1),
-      "Sale should reference first NFT contract"
-    );
-    assert.ok(
-      sale?.nftContractIds.includes(NFT_CONTRACT_2),
-      "Sale should reference second NFT contract"
-    );
-    assert.ok(
-      sale?.nftTokenIds.includes(`${NFT_CONTRACT_1.toLowerCase()}:100`),
+      nftTokenIds.includes(`${NFT_CONTRACT_1.toLowerCase()}:100`),
       "Sale should reference first NFT token"
     );
     assert.ok(
-      sale?.nftTokenIds.includes(`${NFT_CONTRACT_2.toLowerCase()}:200`),
+      nftTokenIds.includes(`${NFT_CONTRACT_2.toLowerCase()}:200`),
       "Sale should reference second NFT token"
     );
 

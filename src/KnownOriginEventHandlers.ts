@@ -3,7 +3,7 @@ import { KnownOrigin, Sale } from "generated";
 import {
   getOrCreateAccount,
   extractNFTIds,
-  updateNFTEntitiesWithSale,
+  createSaleNFTJunctions,
 } from "./entities/EntityHelpers";
 
 KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
@@ -18,13 +18,13 @@ KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
 
   // Extract NFT IDs from the sale
   // For KnownOrigin, the NFT is from the KnownOrigin contract itself
-  const { contractIds, tokenIds } = extractNFTIds(
+  const { nftItems: offerNftItems } = extractNFTIds(
     [2], // ERC721
     [event.srcAddress], // KnownOrigin contract address
     [tokenId],
-    [0], // ETH
-    ["0x0000000000000000000000000000000000000000"], // ETH address
-    ["0"] // no identifier for ETH
+    [], // empty consideration arrays for offer-only extraction
+    [],
+    []
   );
 
   const saleEntity: Sale = {
@@ -36,10 +36,6 @@ KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
     // Account relationships (use _id fields to establish relationships)
     offerer_id: event.params.currentOwner.toLowerCase(), // seller
     recipient_id: event.params.buyer.toLowerCase(), // buyer
-
-    // NFT arrays for easy querying
-    nftContractIds: contractIds,
-    nftTokenIds: tokenIds,
 
     // For KnownOrigin BuyNowPurchased:
     // Offer: NFT from the KnownOrigin contract
@@ -56,8 +52,8 @@ KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
     considerationRecipients: [event.params.currentOwner], // seller receives payment
   };
 
-  // Update NFT entities with this sale
-  await updateNFTEntitiesWithSale(context, saleId, contractIds, tokenIds);
+  // Create SaleNFT junction entities for offer NFTs
+  await createSaleNFTJunctions(context, saleId, offerNftItems, true);
 
   // Save the Sale entity
   context.Sale.set(saleEntity);

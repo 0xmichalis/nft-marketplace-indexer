@@ -3,7 +3,7 @@ import { Seaport, Sale } from "generated";
 import {
   getOrCreateAccount,
   extractNFTIds,
-  updateNFTEntitiesWithSale,
+  createSaleNFTJunctions,
 } from "./entities/EntityHelpers";
 
 Seaport.OrderFulfilled.handler(async ({ event, context }) => {
@@ -45,10 +45,19 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
   await getOrCreateAccount(context, event.params.recipient);
 
   // Extract all NFT IDs from the sale
-  const { contractIds, tokenIds } = extractNFTIds(
+  const { nftItems: offerNftItems } = extractNFTIds(
     offerItemTypes,
     offerTokens,
     offerIdentifiers,
+    [], // empty consideration arrays for offer-only extraction
+    [],
+    []
+  );
+
+  const { nftItems: considerationNftItems } = extractNFTIds(
+    [], // empty offer arrays for consideration-only extraction
+    [],
+    [],
     considerationItemTypes,
     considerationTokens,
     considerationIdentifiers
@@ -65,10 +74,6 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
     offerer_id: event.params.offerer.toLowerCase(),
     recipient_id: event.params.recipient.toLowerCase(),
 
-    // NFT arrays for easy querying
-    nftContractIds: contractIds,
-    nftTokenIds: tokenIds,
-
     // Inline offer arrays
     offerItemTypes,
     offerTokens,
@@ -83,8 +88,11 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
     considerationRecipients,
   };
 
-  // Update NFT entities with this sale
-  await updateNFTEntitiesWithSale(context, saleId, contractIds, tokenIds);
+  // Create SaleNFT junction entities for offer NFTs
+  await createSaleNFTJunctions(context, saleId, offerNftItems, true);
+
+  // Create SaleNFT junction entities for consideration NFTs
+  await createSaleNFTJunctions(context, saleId, considerationNftItems, false);
 
   // Save the Sale entity
   context.Sale.set(saleEntity);

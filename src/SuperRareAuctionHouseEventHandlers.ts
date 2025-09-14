@@ -3,7 +3,7 @@ import { SuperRareAuctionHouse, Sale } from "generated";
 import {
   getOrCreateAccount,
   extractNFTIds,
-  updateNFTEntitiesWithSale,
+  createSaleNFTJunctions,
 } from "./entities/EntityHelpers";
 
 SuperRareAuctionHouse.AuctionSettled.handler(async ({ event, context }) => {
@@ -17,13 +17,13 @@ SuperRareAuctionHouse.AuctionSettled.handler(async ({ event, context }) => {
   await getOrCreateAccount(context, event.params.bidder);
 
   // Extract NFT IDs from the sale
-  const { contractIds, tokenIds } = extractNFTIds(
+  const { nftItems: offerNftItems } = extractNFTIds(
     [2], // ERC721
     [event.params.contractAddress], // Original NFT contract address
     [tokenId],
-    [0], // ETH
-    ["0x0000000000000000000000000000000000000000"], // ETH address
-    ["0"] // no identifier for ETH
+    [], // empty consideration arrays for offer-only extraction
+    [],
+    []
   );
 
   const saleEntity: Sale = {
@@ -35,10 +35,6 @@ SuperRareAuctionHouse.AuctionSettled.handler(async ({ event, context }) => {
     // Account relationships (use _id fields to establish relationships)
     offerer_id: event.params.seller.toLowerCase(),
     recipient_id: event.params.bidder.toLowerCase(),
-
-    // NFT arrays for easy querying
-    nftContractIds: contractIds,
-    nftTokenIds: tokenIds,
 
     // For SuperRareAuctionHouse AuctionSettled:
     // Offer: NFT from the original contract
@@ -55,8 +51,8 @@ SuperRareAuctionHouse.AuctionSettled.handler(async ({ event, context }) => {
     considerationRecipients: [event.params.seller], // seller receives payment
   };
 
-  // Update NFT entities with this sale
-  await updateNFTEntitiesWithSale(context, saleId, contractIds, tokenIds);
+  // Create SaleNFT junction entities for offer NFTs
+  await createSaleNFTJunctions(context, saleId, offerNftItems, true);
 
   // Save the Sale entity
   context.Sale.set(saleEntity);

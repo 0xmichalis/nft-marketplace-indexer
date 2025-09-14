@@ -57,8 +57,6 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
       market: "SuperRare",
       offerer_id: SELLER_ADDRESS.toLowerCase(),
       recipient_id: BIDDER_ADDRESS.toLowerCase(),
-      nftContractIds: [NFT_CONTRACT],
-      nftTokenIds: [`${NFT_CONTRACT.toLowerCase()}:123`],
       timestamp: BigInt(event.block.timestamp),
       transactionHash: event.transaction.hash,
       // Offer: NFT from the original contract
@@ -98,14 +96,12 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
     // which are computed at query time, not stored directly in the entity
 
     // Testing that the sale references the correct NFT contract and token
-    assert.ok(
-      actualSale?.nftContractIds.includes(NFT_CONTRACT),
-      "Sale should reference the NFT contract"
-    );
-    assert.ok(
-      actualSale?.nftTokenIds.includes(`${NFT_CONTRACT.toLowerCase()}:123`),
-      "Sale should reference the NFT token"
-    );
+    // Check NFT data via junction entity
+    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
+    assert.equal(saleNfts.length, 1, "Sale should have one NFT");
+    assert.equal(saleNfts[0].nftToken_id, `${NFT_CONTRACT.toLowerCase()}:123`);
+    assert.equal(saleNfts[0].isOffer, true, "NFT should be in offer");
 
     // Note: With @derivedFrom relationships, sales are automatically linked
     // The relationships are computed at query time, not stored directly in the entity
@@ -564,9 +560,15 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
 
     assert.ok(sale1, "Sale 1 should exist");
     assert.ok(sale2, "Sale 2 should exist");
-    assert.ok(sale1.nftContractIds.includes(CONTRACT_1), "Sale 1 should reference Contract 1");
-    assert.ok(sale2.nftContractIds.includes(CONTRACT_2), "Sale 2 should reference Contract 2");
-    assert.ok(!sale1.nftContractIds.includes(CONTRACT_2), "Sale 1 should not reference Contract 2");
-    assert.ok(!sale2.nftContractIds.includes(CONTRACT_1), "Sale 2 should not reference Contract 1");
+
+    // Check NFT data via junction entities
+    const allSaleNfts = currentDb.entities.SaleNFT.getAll();
+    const sale1Nfts = allSaleNfts.filter((sn) => sn.sale_id === sale1.id);
+    const sale2Nfts = allSaleNfts.filter((sn) => sn.sale_id === sale2.id);
+
+    assert.equal(sale1Nfts.length, 1, "Sale 1 should have one NFT");
+    assert.equal(sale2Nfts.length, 1, "Sale 2 should have one NFT");
+    assert.equal(sale1Nfts[0].nftToken_id, `${CONTRACT_1.toLowerCase()}:100`);
+    assert.equal(sale2Nfts[0].nftToken_id, `${CONTRACT_2.toLowerCase()}:200`);
   });
 });
