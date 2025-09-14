@@ -20,9 +20,9 @@ jobs:
         node-version: '20'
         
     - name: Setup pnpm
-      uses: pnpm/action-setup@v2
+      uses: pnpm/action-setup@v4
       with:
-        version: 8
+        version: 10
         
     - name: Get pnpm store directory
       shell: bash
@@ -37,6 +37,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pnpm-store-
           
+    - name: Check pnpm version and lockfile
+      run: |
+        echo "pnpm version: $(pnpm --version)"
+        echo "lockfile version: $(head -1 pnpm-lock.yaml || echo 'No lockfile found')"
+        
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
       
