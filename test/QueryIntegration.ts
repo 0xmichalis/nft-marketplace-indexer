@@ -50,13 +50,15 @@ describe("GraphQL Query Integration Tests", () => {
         limit: 3,
       });
 
-      console.log(`📊 Found ${result.account.length} accounts matching user ${testUserAddress}`);
+      console.log(
+        `📊 Found ${result.Account?.length || 0} accounts matching user ${testUserAddress}`
+      );
 
       // Verify we got valid data structure
-      assert(Array.isArray(result.account), "Result should contain Account array");
+      assert(Array.isArray(result.Account), "Result should contain Account array");
 
-      if (result.account.length > 0) {
-        const account = result.account[0];
+      if (result.Account && result.Account.length > 0) {
+        const account = result.Account[0];
 
         // Verify account structure
         assert(typeof account.id === "string", "Account should have id");
@@ -110,7 +112,7 @@ describe("GraphQL Query Integration Tests", () => {
           });
           return {
             variation: addressVariation,
-            count: result.account.length,
+            count: result.Account?.length || 0,
           };
         })
       );
@@ -151,12 +153,12 @@ describe("GraphQL Query Integration Tests", () => {
         limit: 5,
       });
 
-      console.log(`🐵 Found ${result.nftContract.length} BAYC contracts`);
+      console.log(`🐵 Found ${result.NFTContract?.length || 0} BAYC contracts`);
 
-      assert(Array.isArray(result.nftContract), "Result should contain NFTContract array");
+      assert(Array.isArray(result.NFTContract), "Result should contain NFTContract array");
 
-      if (result.nftContract && result.nftContract.length > 0) {
-        const nftContract = result.nftContract[0];
+      if (result.NFTContract && result.NFTContract.length > 0) {
+        const nftContract = result.NFTContract[0];
         const allSales = nftContract.tokens.flatMap((token) =>
           token.sales.map((sale) => sale.sale)
         );
@@ -232,13 +234,13 @@ describe("GraphQL Query Integration Tests", () => {
         tokenId: testTokenId,
       });
 
-      console.log(`🎨 Found ${result.nftToken.length} NFT tokens for BAYC #${testTokenId}`);
+      console.log(`🎨 Found ${result.NFTToken?.length || 0} NFT tokens for BAYC #${testTokenId}`);
 
       // Verify we got valid data structure
-      assert(Array.isArray(result.nftToken), "Result should contain NFTToken array");
+      assert(Array.isArray(result.NFTToken), "Result should contain NFTToken array");
 
-      if (result.nftToken.length > 0) {
-        const nftToken = result.nftToken[0];
+      if (result.NFTToken && result.NFTToken.length > 0) {
+        const nftToken = result.NFTToken[0];
 
         // Verify NFT token structure
         assert(typeof nftToken.id === "string", "NFTToken should have id");
@@ -261,9 +263,9 @@ describe("GraphQL Query Integration Tests", () => {
       }
 
       // Check the Sale results from the NFT token
-      if (result.nftToken && result.nftToken.length > 0) {
-        const nftToken = result.nftToken[0];
-        const sales = nftToken.sales.map((sale) => sale.sale);
+      if (result.NFTToken && result.NFTToken.length > 0) {
+        const nftToken = result.NFTToken[0];
+        const sales = nftToken.sales.map((sale: any) => sale.sale);
 
         if (sales.length > 0) {
           console.log(`✅ Found ${sales.length} sales involving BAYC #${testTokenId}`);
@@ -275,14 +277,14 @@ describe("GraphQL Query Integration Tests", () => {
           // Show NFT data from junction entities
           if (firstSale.nfts && firstSale.nfts.length > 0) {
             const nftData = firstSale.nfts
-              .map((nft) => `${nft.nftToken.contract.address}:${nft.nftToken.tokenId}`)
+              .map((nft: any) => `${nft.nftToken.contract.address}:${nft.nftToken.tokenId}`)
               .join(", ");
             console.log(`   NFT Data: ${nftData}`);
           }
 
           // Verify the sale contains the specific token we're looking for
           const hasTargetToken = firstSale.nfts?.some(
-            (nft) =>
+            (nft: any) =>
               nft.nftToken.tokenId === testTokenId &&
               nft.nftToken.contract.address.toLowerCase() === baycContract.toLowerCase()
           );

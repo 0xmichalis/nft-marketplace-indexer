@@ -69,7 +69,7 @@ query SalesByNFTContract($contractAddress: String!) {
     id
     address
     tokens {
-      sales(order_by: { timestamp: desc }) {
+      sales(order_by: { sale: { timestamp: desc } }) {
         sale {
           id
           timestamp
@@ -109,7 +109,7 @@ query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
       id
       address
     }
-    sales(order_by: { timestamp: desc }) {
+    sales(order_by: { sale: { timestamp: desc } }) {
       sale {
         id
         timestamp

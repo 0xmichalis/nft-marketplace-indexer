@@ -4,10 +4,15 @@
 export const QUERY_FRAGMENTS = {
   orderFullDetails: `
       id
-      offerer
-      recipient
+      offerer {
+        address
+      }
+      recipient {
+        address
+      }
       transactionHash
       timestamp
+      market
       offerTokens
       offerIdentifiers
       offerAmounts
@@ -63,7 +68,7 @@ export const QUERIES = {
           id
           address
           tokens {
-            sales(order_by: { timestamp: desc }, limit: $limit) {
+            sales(order_by: { sale: { timestamp: desc } }, limit: $limit) {
               sale {
                 ${QUERY_FRAGMENTS.orderFullDetails}
               }
@@ -90,7 +95,7 @@ export const QUERIES = {
             id
             address
           }
-          sales(order_by: { timestamp: desc }, limit: $limit) {
+          sales(order_by: { sale: { timestamp: desc } }, limit: $limit) {
             sale {
               ${QUERY_FRAGMENTS.orderFullDetails}
             }
@@ -122,8 +127,12 @@ export interface Sale {
   transactionHash: string;
   market: string;
 
-  offerer: string;
-  recipient: string;
+  offerer: {
+    address: string;
+  };
+  recipient: {
+    address: string;
+  };
 
   nfts: SaleNFT[];
 
@@ -140,7 +149,12 @@ export interface Sale {
 }
 
 export interface SalesByUserResponse {
-  sales: Sale[];
+  Account: Array<{
+    id: string;
+    address: string;
+    salesAsOfferer: Sale[];
+    salesAsRecipient: Sale[];
+  }>;
 }
 
 /**
@@ -154,38 +168,33 @@ export interface AccountWithSalesResponse {
 }
 
 export interface NFTContractWithSalesResponse {
-  id: string;
-  address: string;
-  tokens: Array<{
+  NFTContract: Array<{
+    id: string;
+    address: string;
+    tokens: Array<{
+      sales: Array<{
+        sale: Sale;
+      }>;
+    }>;
+  }>;
+}
+
+export interface NFTTokenWithSalesResponse {
+  NFTToken: Array<{
+    id: string;
+    tokenId: string;
+    contract: {
+      id: string;
+      address: string;
+    };
     sales: Array<{
       sale: Sale;
     }>;
   }>;
 }
 
-export interface NFTTokenWithSalesResponse {
-  id: string;
-  tokenId: string;
-  contract: {
-    id: string;
-    address: string;
-  };
-  sales: Array<{
-    sale: Sale;
-  }>;
-}
-
-export interface SalesByUserResponse {
-  account: AccountWithSalesResponse[];
-}
-
-export interface SalesByNFTContractResponse {
-  nftContract: NFTContractWithSalesResponse[];
-}
-
-export interface SalesByNFTTokenResponse {
-  nftToken: NFTTokenWithSalesResponse[];
-}
+export type SalesByNFTContractResponse = NFTContractWithSalesResponse;
+export type SalesByNFTTokenResponse = NFTTokenWithSalesResponse;
 
 export interface NFTContractWithTokensResponse {
   nftContract: Array<{
