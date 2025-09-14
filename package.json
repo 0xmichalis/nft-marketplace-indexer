@@ -14,7 +14,8 @@
     "start": "envio start",
     "test": "pnpm mocha",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/chai": "^4.3.11",
@@ -24,6 +25,7 @@
     "dotenv": "^17.2.2",
     "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",
+    "husky": "^9.1.7",
     "mocha": "10.2.0",
     "prettier": "^3.6.2",
     "ts-mocha": "^10.0.0",

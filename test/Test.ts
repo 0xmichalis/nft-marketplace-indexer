@@ -19,9 +19,7 @@ describe("Seaport contract OrderFulfilled event tests", () => {
     });
 
     // Getting the actual entity from the mock database
-    let actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
+    let actualSale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     // Extract expected arrays from event data
     const expectedOfferItemTypes: number[] = [];
@@ -89,9 +87,7 @@ describe("Seaport contract OrderFulfilled event tests", () => {
     });
 
     // Getting the actual entity from the mock database
-    let actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
+    let actualSale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     // Verify offer arrays have correct lengths
     assert.equal(
@@ -123,11 +119,7 @@ describe("Seaport contract OrderFulfilled event tests", () => {
         Number(spentItem[0]),
         "First offer item type should match"
       );
-      assert.equal(
-        actualSale?.offerTokens[0],
-        spentItem[1],
-        "First offer token should match"
-      );
+      assert.equal(actualSale?.offerTokens[0], spentItem[1], "First offer token should match");
       assert.equal(
         actualSale?.offerIdentifiers[0],
         spentItem[2].toString(),
@@ -149,9 +141,7 @@ describe("Seaport contract OrderFulfilled event tests", () => {
     });
 
     // Getting the actual entity from the mock database
-    let actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
+    let actualSale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     // Verify consideration arrays have correct lengths
     assert.equal(

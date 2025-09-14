@@ -1,0 +1,16 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run formatting
+echo "🎨 Running Prettier formatting..."
+pnpm format
+
+# Add any formatting changes to the commit
+if ! git diff --exit-code --quiet; then
+  echo "📝 Auto-staging formatting changes..."
+  git add .
+fi
+
+# Run tests
+echo "🧪 Running tests..."
+pnpm test
