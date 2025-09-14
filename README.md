@@ -24,8 +24,12 @@ query SalesByUser($userAddress: String!) {
       timestamp
       transactionHash
       market
-      offerer
-      recipient
+      offerer {
+        address
+      }
+      recipient {
+        address
+      }
       nftContractIds
       nftTokenIds
       offerTokens
@@ -40,8 +44,12 @@ query SalesByUser($userAddress: String!) {
       timestamp
       transactionHash
       market
-      offerer
-      recipient
+      offerer {
+        address
+      }
+      recipient {
+        address
+      }
       nftContractIds
       nftTokenIds
       offerTokens
@@ -74,8 +82,12 @@ query SalesByNFTContract($contractAddress: String!) {
     timestamp
     transactionHash
     market
-    offerer
-    recipient
+    offerer {
+      address
+    }
+    recipient {
+      address
+    }
     nftContractIds
     nftTokenIds
     offerTokens
@@ -108,8 +120,12 @@ query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
     timestamp
     transactionHash
     market
-    offerer
-    recipient
+    offerer {
+      address
+    }
+    recipient {
+      address
+    }
     nftContractIds
     nftTokenIds
     offerTokens
