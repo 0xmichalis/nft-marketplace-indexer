@@ -37,5 +37,6 @@ networks:
             field_selection:
               transaction_fields:
                 - hash
+output: generated
 unordered_multichain_mode: true
 preload_handlers: true

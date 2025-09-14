@@ -54,8 +54,10 @@ describe("Seaport contract OrderFulfilled event tests", () => {
     const expectedSale: Sale = {
       id: `${event.chainId}_${event.transaction.hash}`,
       market: "Seaport",
-      offerer: event.params.offerer,
-      recipient: event.params.recipient,
+      offerer_id: event.params.offerer.toLowerCase(),
+      recipient_id: event.params.recipient.toLowerCase(),
+      nftContractIds: [],
+      nftTokenIds: [],
       timestamp: BigInt(event.block.timestamp),
       transactionHash: event.transaction.hash,
       // Inline offer arrays

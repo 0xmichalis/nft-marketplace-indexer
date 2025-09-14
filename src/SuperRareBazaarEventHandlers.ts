@@ -1,32 +1,65 @@
 import { SuperRareBazaar, Sale } from "generated";
 
+import {
+  getOrCreateAccount,
+  extractNFTIds,
+  updateNFTEntitiesWithSale,
+} from "./entities/EntityHelpers";
+
 SuperRareBazaar.AcceptOffer.handler(async ({ event, context }) => {
+  const timestamp = BigInt(event.block.timestamp);
+  const saleId = `${event.chainId}_${event.transaction.hash}`;
+  const tokenId = event.params.tokenId.toString();
+  const paymentAmount = event.params.amount.toString();
+  const isETH = event.params.currencyAddress === "0x0000000000000000000000000000000000000000";
+
+  // Ensure Account entities exist
+  await getOrCreateAccount(context, event.params.seller);
+  await getOrCreateAccount(context, event.params.bidder);
+
+  // Extract NFT IDs from the sale
+  const { contractIds, tokenIds } = extractNFTIds(
+    [2], // ERC721
+    [event.params.originContract], // Original NFT contract address
+    [tokenId],
+    [isETH ? 0 : 1], // ETH (0) or ERC20 (1)
+    [event.params.currencyAddress],
+    ["0"] // no identifier for currency
+  );
+
   const saleEntity: Sale = {
-    id: `${event.chainId}_${event.transaction.hash}`,
-    timestamp: BigInt(event.block.timestamp),
+    id: saleId,
+    timestamp,
     transactionHash: event.transaction.hash,
     market: "SuperRare",
 
-    offerer: event.params.seller,
-    recipient: event.params.bidder,
+    // Account relationships (use _id fields to establish relationships)
+    offerer_id: event.params.seller.toLowerCase(),
+    recipient_id: event.params.bidder.toLowerCase(),
+
+    // NFT arrays for easy querying
+    nftContractIds: contractIds,
+    nftTokenIds: tokenIds,
 
     // For SuperRareBazaar AcceptOffer:
     // Offer: NFT from the original contract
     offerItemTypes: [2], // ERC721
     offerTokens: [event.params.originContract], // Original NFT contract address
-    offerIdentifiers: [event.params.tokenId.toString()],
+    offerIdentifiers: [tokenId],
     offerAmounts: ["1"], // quantity 1 for NFT
 
     // Consideration: Payment in the specified currency
     // Note: currencyAddress of 0x0 typically means ETH
-    considerationItemTypes: [
-      event.params.currencyAddress === "0x0000000000000000000000000000000000000000" ? 0 : 1,
-    ], // ETH (0) or ERC20 (1)
+    considerationItemTypes: [isETH ? 0 : 1], // ETH (0) or ERC20 (1)
     considerationTokens: [event.params.currencyAddress],
     considerationIdentifiers: ["0"], // no identifier for currency
-    considerationAmounts: [event.params.amount.toString()],
+    considerationAmounts: [paymentAmount],
     considerationRecipients: [event.params.seller], // seller receives payment
   };
 
+  // Update NFT entities with this sale
+  await updateNFTEntitiesWithSale(context, saleId, contractIds, tokenIds);
+
+  // Save the Sale entity
   context.Sale.set(saleEntity);
 });

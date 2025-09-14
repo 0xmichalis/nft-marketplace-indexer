@@ -1,12 +1,44 @@
+# Core entities with optimized relationships for fast queries
+
+type Account {
+  id: ID! # wallet address (lowercase)
+  address: String! # original case address
+  # Reverse lookups using @derivedFrom
+  salesAsOfferer: [Sale!]! @derivedFrom(field: "offerer")
+  salesAsRecipient: [Sale!]! @derivedFrom(field: "recipient")
+}
+
+type NFTContract {
+  id: ID! # contract address (lowercase)
+  address: String! # original case address
+  # Reverse lookup for all tokens in this contract
+  tokens: [NFTToken!]! @derivedFrom(field: "contract")
+
+  # Simple array of sale IDs involving this contract
+  sales_id: [String!]!
+}
+
+type NFTToken {
+  id: ID! # contract_address:token_id (lowercase)
+  contract: NFTContract! # reference to parent contract
+  tokenId: String!
+
+  # Simple array of sale IDs involving this specific token
+  sales_id: [String!]!
+}
+
 type Sale {
   id: ID!
   timestamp: BigInt!
   transactionHash: String!
   market: String!
 
-  offerer: String!
-  recipient: String!
+  offerer: Account!
+  recipient: Account!
 
+  # Arrays of NFT contract and token IDs involved in this sale
+  nftContractIds: [String!]! # contract addresses involved
+  nftTokenIds: [String!]! # contract:tokenId combinations involved
   # Offer items as parallel arrays
   offerItemTypes: [Int!]!
   offerTokens: [String!]!
