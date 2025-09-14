@@ -1,24 +1,3 @@
-type Seaport_OfferItem {
-  id: ID!
-  order_id: String!
-
-  itemType: Int!
-  token: String!
-  identifier: String!
-  amount: String!
-}
-
-type Seaport_ConsiderationItem {
-  id: ID!
-  order_id: String!
-
-  itemType: Int!
-  token: String!
-  identifier: String!
-  amount: String!
-  recipient: String!
-}
-
 type Seaport_OrderFulfilled {
   id: ID!
   timestamp: BigInt!
@@ -29,4 +8,17 @@ type Seaport_OrderFulfilled {
   offerer: String!
   zone: String!
   recipient: String!
+  
+  # Offer items as parallel arrays
+  offerItemTypes: [Int!]!
+  offerTokens: [String!]!
+  offerIdentifiers: [String!]!
+  offerAmounts: [String!]!
+  
+  # Consideration items as parallel arrays
+  considerationItemTypes: [Int!]!
+  considerationTokens: [String!]!
+  considerationIdentifiers: [String!]!
+  considerationAmounts: [String!]!
+  considerationRecipients: [String!]!
 }

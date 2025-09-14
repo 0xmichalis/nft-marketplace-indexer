@@ -4,12 +4,40 @@
 import {
   Seaport,
   Seaport_OrderFulfilled,
-  Seaport_OfferItem,
-  Seaport_ConsiderationItem,
 } from "generated";
 
 Seaport.OrderFulfilled.handler(async ({ event, context }) => {
-  // Create the main OrderFulfilled entity
+  // Extract offer data into parallel arrays
+  const offerItemTypes: number[] = [];
+  const offerTokens: string[] = [];
+  const offerIdentifiers: string[] = [];
+  const offerAmounts: string[] = [];
+
+  for (let i = 0; i < event.params.offer.length; i++) {
+    const spentItem = event.params.offer[i];
+    offerItemTypes.push(Number(spentItem[0]));
+    offerTokens.push(spentItem[1]);
+    offerIdentifiers.push(spentItem[2].toString());
+    offerAmounts.push(spentItem[3].toString());
+  }
+
+  // Extract consideration data into parallel arrays
+  const considerationItemTypes: number[] = [];
+  const considerationTokens: string[] = [];
+  const considerationIdentifiers: string[] = [];
+  const considerationAmounts: string[] = [];
+  const considerationRecipients: string[] = [];
+
+  for (let i = 0; i < event.params.consideration.length; i++) {
+    const receivedItem = event.params.consideration[i];
+    considerationItemTypes.push(Number(receivedItem[0]));
+    considerationTokens.push(receivedItem[1]);
+    considerationIdentifiers.push(receivedItem[2].toString());
+    considerationAmounts.push(receivedItem[3].toString());
+    considerationRecipients.push(receivedItem[4]);
+  }
+
+  // Create the main OrderFulfilled entity with inlined parallel arrays
   const orderFulfilledEntity: Seaport_OrderFulfilled = {
     id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
     orderHash: event.params.orderHash,
@@ -19,38 +47,18 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
     blockNumber: BigInt(event.block.number),
     timestamp: BigInt(event.block.timestamp),
     transactionHash: event.transaction.hash,
+    // Inline offer arrays
+    offerItemTypes,
+    offerTokens,
+    offerIdentifiers,
+    offerAmounts,
+    // Inline consideration arrays
+    considerationItemTypes,
+    considerationTokens,
+    considerationIdentifiers,
+    considerationAmounts,
+    considerationRecipients,
   };
 
   context.Seaport_OrderFulfilled.set(orderFulfilledEntity);
-
-  // Create OfferItem entities (SpentItem structure: itemType, token, identifier, amount)
-  for (let i = 0; i < event.params.offer.length; i++) {
-    const spentItem = event.params.offer[i];
-    const offerEntity: Seaport_OfferItem = {
-      id: `${event.chainId}_${event.block.number}_${event.logIndex}_offer_${i}`,
-      order_id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-      itemType: Number(spentItem[0]),
-      token: spentItem[1],
-      identifier: spentItem[2].toString(),
-      amount: spentItem[3].toString(),
-    };
-
-    context.Seaport_OfferItem.set(offerEntity);
-  }
-
-  // Create ConsiderationItem entities (ReceivedItem structure: itemType, token, identifier, amount, recipient)
-  for (let i = 0; i < event.params.consideration.length; i++) {
-    const receivedItem = event.params.consideration[i];
-    const considerationEntity: Seaport_ConsiderationItem = {
-      id: `${event.chainId}_${event.block.number}_${event.logIndex}_consideration_${i}`,
-      order_id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-      itemType: Number(receivedItem[0]),
-      token: receivedItem[1],
-      identifier: receivedItem[2].toString(),
-      amount: receivedItem[3].toString(),
-      recipient: receivedItem[4],
-    };
-
-    context.Seaport_ConsiderationItem.set(considerationEntity);
-  }
 });
