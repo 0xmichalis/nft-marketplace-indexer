@@ -1,0 +1,32 @@
+type Seaport_OfferItem {
+  id: ID!
+  order_id: String!
+
+  itemType: Int!
+  token: String!
+  identifier: String!
+  amount: String!
+}
+
+type Seaport_ConsiderationItem {
+  id: ID!
+  order_id: String!
+
+  itemType: Int!
+  token: String!
+  identifier: String!
+  amount: String!
+  recipient: String!
+}
+
+type Seaport_OrderFulfilled {
+  id: ID!
+  
+  orderHash: String!
+  offerer: String!
+  zone: String!
+  recipient: String!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: String!
+}

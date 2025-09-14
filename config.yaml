@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: nft-marketplace-indexer
+event_decoder: viem
+networks:
+- id: 1
+  start_block: 0
+  contracts:
+  - name: Seaport
+    address:
+    - '0x0000000000000068F116a894984e2DB1123eB395'
+    handler: src/EventHandlers.ts
+    events:
+    - event: OrderFulfilled(bytes32 orderHash, address indexed offerer, address indexed zone, address recipient, (uint8,address,uint256,uint256)[] offer, (uint8,address,uint256,uint256,address)[] consideration)
+      field_selection:
+        transaction_fields:
+          - hash
+unordered_multichain_mode: true
+preload_handlers: true
