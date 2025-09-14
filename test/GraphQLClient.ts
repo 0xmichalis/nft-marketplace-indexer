@@ -131,16 +131,17 @@ export const QUERIES = {
  */
 export interface OrderFulfilledResponse {
   id: string;
-  orderHash: string;
+  timestamp: string;
+  transactionHash: string;
+
   offerer: string;
   recipient: string;
-  transactionHash: string;
-  timestamp: string;
-  blockNumber: string;
+
   offerTokens: string[];
   offerIdentifiers: string[];
   offerAmounts: string[];
   offerItemTypes: number[];
+
   considerationTokens: string[];
   considerationIdentifiers: string[];
   considerationAmounts: string[];
@@ -150,12 +151,4 @@ export interface OrderFulfilledResponse {
 
 export interface OrdersByUserResponse {
   Seaport_OrderFulfilled: OrderFulfilledResponse[];
-}
-
-export interface OrderStatsResponse {
-  Seaport_OrderFulfilled_aggregate: {
-    aggregate: {
-      count: number;
-    };
-  };
 }

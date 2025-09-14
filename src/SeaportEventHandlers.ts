@@ -39,19 +39,19 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
 
   // Create the main OrderFulfilled entity with inlined parallel arrays
   const orderFulfilledEntity: Seaport_OrderFulfilled = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    orderHash: event.params.orderHash,
-    offerer: event.params.offerer,
-    zone: event.params.zone,
-    recipient: event.params.recipient,
-    blockNumber: BigInt(event.block.number),
+    id: `${event.chainId}_${event.transaction.hash}`,
     timestamp: BigInt(event.block.timestamp),
     transactionHash: event.transaction.hash,
+
+    offerer: event.params.offerer,
+    recipient: event.params.recipient,
+
     // Inline offer arrays
     offerItemTypes,
     offerTokens,
     offerIdentifiers,
     offerAmounts,
+
     // Inline consideration arrays
     considerationItemTypes,
     considerationTokens,

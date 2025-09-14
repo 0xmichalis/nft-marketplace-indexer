@@ -2,11 +2,8 @@ type Seaport_OrderFulfilled {
   id: ID!
   timestamp: BigInt!
   transactionHash: String!
-  blockNumber: BigInt!
 
-  orderHash: String!
   offerer: String!
-  zone: String!
   recipient: String!
   
   # Offer items as parallel arrays
