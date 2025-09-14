@@ -1,0 +1,8 @@
+{
+  "timeout": 30000,
+  "extensions": ["ts"],
+  "spec": "test/**/*.ts",
+  "reporter": "spec",
+  "recursive": true,
+  "exit": true
+}

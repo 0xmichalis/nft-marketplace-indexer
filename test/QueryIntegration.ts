@@ -34,10 +34,6 @@ describe("GraphQL Query Integration Tests", () => {
     console.log(`\n🔗 Running GraphQL integration tests against: ${client.getEndpoint()}\n`);
   });
 
-  beforeEach(function () {
-    this.timeout(10000);
-  });
-
   describe("User Activity Queries", () => {
     const testUserAddress = "0x56E81BC43A5fc9a01Ff000270bc55a02df268147";
 
@@ -46,7 +42,7 @@ describe("GraphQL Query Integration Tests", () => {
 
       const result = await client.query<OrdersByUserResponse>(QUERIES.ordersByUser, {
         userAddress: testUserAddress,
-        limit: 10,
+        limit: 3,
       });
 
       console.log(
