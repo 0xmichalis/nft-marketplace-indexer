@@ -21,12 +21,12 @@ type Seaport_ConsiderationItem {
 
 type Seaport_OrderFulfilled {
   id: ID!
-  
+  timestamp: BigInt!
+  transactionHash: String!
+  blockNumber: BigInt!
+
   orderHash: String!
   offerer: String!
   zone: String!
   recipient: String!
-  blockNumber: BigInt!
-  timestamp: BigInt!
-  transactionHash: String!
 }
