@@ -30,8 +30,6 @@ query SalesByUser($userAddress: String!) {
       recipient {
         address
       }
-      nftContractIds
-      nftTokenIds
       offerTokens
       offerIdentifiers
       offerAmounts
@@ -50,8 +48,6 @@ query SalesByUser($userAddress: String!) {
       recipient {
         address
       }
-      nftContractIds
-      nftTokenIds
       offerTokens
       offerIdentifiers
       offerAmounts
@@ -83,8 +79,6 @@ query SalesByNFTContract($contractAddress: String!) {
       recipient {
         address
       }
-      nftContractIds
-      nftTokenIds
       offerTokens
       offerIdentifiers
       offerAmounts
@@ -122,8 +116,6 @@ query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
       recipient {
         address
       }
-      nftContractIds
-      nftTokenIds
       offerTokens
       offerIdentifiers
       offerAmounts
