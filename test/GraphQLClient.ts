@@ -106,13 +106,16 @@ export const QUERIES = {
   `,
 
   /**
-   * Find orders by specific NFT contract
+   * Find orders by specific NFT contract (in offer OR consideration)
    */
   ordersByNFTContract: `
     query OrdersByNFTContract($contractAddress: String!, $limit: Int) {
       Seaport_OrderFulfilled(
         where: {
-          offerTokens: { _contains: [$contractAddress] }
+          _or: [
+            { offerTokens: { _contains: [$contractAddress] } },
+            { considerationTokens: { _contains: [$contractAddress] } }
+          ]
         }
         order_by: { timestamp: desc }
         limit: $limit

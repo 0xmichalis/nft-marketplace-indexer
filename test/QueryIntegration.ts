@@ -16,8 +16,6 @@ describe("GraphQL Query Integration Tests", () => {
   let client: IndexerGraphQLClient | null;
 
   before(function() {
-    // Increase timeout for this test suite
-    this.timeout(10000);
     // Skip all tests if GRAPH_API_URL is not set
     if (!isGraphQLEndpointAvailable()) {
       console.log('\n⚠️  Skipping GraphQL integration tests: GRAPH_API_URL environment variable not set');
@@ -34,6 +32,10 @@ describe("GraphQL Query Integration Tests", () => {
     }
 
     console.log(`\n🔗 Running GraphQL integration tests against: ${client.getEndpoint()}\n`);
+  });
+
+  beforeEach(function() {
+    this.timeout(10000);
   });
 
   describe("User Activity Queries", () => {
@@ -142,24 +144,47 @@ describe("GraphQL Query Integration Tests", () => {
       assert(Array.isArray(result.Seaport_OrderFulfilled), "Result should be an array");
 
       if (result.Seaport_OrderFulfilled.length > 0) {
-        const baycOrders = result.Seaport_OrderFulfilled.filter(order => 
+        // Check for BAYC in offer (being sold)
+        const baycInOffer = result.Seaport_OrderFulfilled.filter(order => 
           order.offerTokens.some(token => 
             token.toLowerCase() === baycContract.toLowerCase()
           )
         );
 
-        console.log(`✅ Orders with BAYC in offer: ${baycOrders.length}`);
-        
-        if (baycOrders.length > 0) {
-          const firstOrder = baycOrders[0];
-          const baycIndex = firstOrder.offerTokens.findIndex(token => 
+        // Check for BAYC in consideration (being bought/traded for)
+        const baycInConsideration = result.Seaport_OrderFulfilled.filter(order => 
+          order.considerationTokens.some(token => 
             token.toLowerCase() === baycContract.toLowerCase()
-          );
-          
-          console.log(`   Latest BAYC order: ${firstOrder.orderHash}`);
-          console.log(`   Token ID: ${firstOrder.offerIdentifiers[baycIndex]}`);
-          console.log(`   Timestamp: ${new Date(parseInt(firstOrder.timestamp) * 1000).toISOString()}`);
+          )
+        );
+
+        console.log(`✅ Orders with BAYC in offer (selling): ${baycInOffer.length}`);
+        console.log(`✅ Orders with BAYC in consideration (buying): ${baycInConsideration.length}`);
+        
+        // Show details for the latest order (regardless of offer/consideration)
+        const latestOrder = result.Seaport_OrderFulfilled[0];
+        
+        // Check where BAYC appears in this order
+        const baycInOfferIndex = latestOrder.offerTokens.findIndex(token => 
+          token.toLowerCase() === baycContract.toLowerCase()
+        );
+        const baycInConsiderationIndex = latestOrder.considerationTokens.findIndex(token => 
+          token.toLowerCase() === baycContract.toLowerCase()
+        );
+        
+        console.log(`   Latest BAYC order: ${latestOrder.orderHash}`);
+        
+        if (baycInOfferIndex >= 0) {
+          console.log(`   BAYC in OFFER (selling) - Token ID: ${latestOrder.offerIdentifiers[baycInOfferIndex]}`);
+          console.log(`   Seller: ${latestOrder.offerer}`);
         }
+        
+        if (baycInConsiderationIndex >= 0) {
+          console.log(`   BAYC in CONSIDERATION (buying) - Token ID: ${latestOrder.considerationIdentifiers[baycInConsiderationIndex]}`);
+          console.log(`   Buyer: ${latestOrder.recipient}`);
+        }
+        
+        console.log(`   Timestamp: ${new Date(parseInt(latestOrder.timestamp) * 1000).toISOString()}`);
       }
     });
   });

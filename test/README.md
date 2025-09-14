@@ -92,17 +92,25 @@ query OrdersByUser($userAddress: String!, $limit: Int) {
 
 ### 2. NFT-Specific Queries
 
-**Find orders by specific NFT contract**
-```graphql
-query OrdersByNFTContract($contractAddress: String!, $limit: Int) {
-  Seaport_OrderFulfilled(
-    where: {
-      offerTokens: { _contains: [$contractAddress] }
+  **Find orders by specific NFT contract (in offer OR consideration)**
+  ```graphql
+  query OrdersByNFTContract($contractAddress: String!, $limit: Int) {
+    Seaport_OrderFulfilled(
+      where: {
+        _or: [
+          { offerTokens: { _contains: [$contractAddress] } },
+          { considerationTokens: { _contains: [$contractAddress] } }
+        ]
+      }
+      order_by: { timestamp: desc }
+      limit: $limit
+    ) {
+      # ... fields
     }
-    order_by: { timestamp: desc }
-    limit: $limit
-  ) {
-    # ... fields
   }
-}
-```
+  ```
+  
+  **Use Cases:**
+  - NFT sales: Contract appears in `offerTokens` (seller offering NFT)
+  - NFT purchases/trades: Contract appears in `considerationTokens` (buyer requesting NFT)
+  - Complex trades: NFT-for-NFT swaps where contract could be in either position
