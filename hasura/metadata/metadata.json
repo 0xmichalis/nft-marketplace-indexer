@@ -1,5 +1,5 @@
 {
-  "resource_version": 21,
+  "resource_version": 26,
   "metadata": {
     "version": 3,
     "sources": [
@@ -48,9 +48,8 @@
               {
                 "role": "public",
                 "permission": {
-                  "columns": ["address", "id"],
-                  "filter": {},
-                  "allow_aggregations": true
+                  "columns": ["address", "id", "db_write_timestamp"],
+                  "filter": {}
                 },
                 "comment": ""
               }
@@ -88,9 +87,8 @@
               {
                 "role": "public",
                 "permission": {
-                  "columns": ["address", "id"],
-                  "filter": {},
-                  "allow_aggregations": true
+                  "columns": ["address", "id", "db_write_timestamp"],
+                  "filter": {}
                 },
                 "comment": ""
               }
@@ -145,9 +143,8 @@
               {
                 "role": "public",
                 "permission": {
-                  "columns": ["contract_id", "id", "tokenId"],
-                  "filter": {},
-                  "allow_aggregations": true
+                  "columns": ["contract_id", "id", "tokenId", "db_write_timestamp"],
+                  "filter": {}
                 },
                 "comment": ""
               }
@@ -223,19 +220,19 @@
                     "considerationItemTypes",
                     "considerationRecipients",
                     "considerationTokens",
-                    "id",
-                    "market",
                     "offerAmounts",
                     "offerIdentifiers",
                     "offerItemTypes",
                     "offerTokens",
+                    "timestamp",
+                    "id",
+                    "market",
                     "offerer_id",
                     "recipient_id",
-                    "timestamp",
-                    "transactionHash"
+                    "transactionHash",
+                    "db_write_timestamp"
                   ],
-                  "filter": {},
-                  "allow_aggregations": true
+                  "filter": {}
                 },
                 "comment": ""
               }
@@ -282,9 +279,8 @@
               {
                 "role": "public",
                 "permission": {
-                  "columns": ["id", "isOffer", "nftToken_id", "sale_id"],
-                  "filter": {},
-                  "allow_aggregations": true
+                  "columns": ["isOffer", "id", "nftToken_id", "sale_id", "db_write_timestamp"],
+                  "filter": {}
                 },
                 "comment": ""
               }
