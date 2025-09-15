@@ -4,6 +4,8 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
+    volumes:
+      - ./hasura/metadata:/metadata:ro
     env_file:
       - .env.hasura
     environment:
@@ -14,6 +16,7 @@ services:
       HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "true"
       PORT: 8080
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: public
+      HASURA_GRAPHQL_METADATA_DIR: /metadata
     networks:
       - indexer-network
   indexer:

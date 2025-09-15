@@ -1,0 +1,394 @@
+{
+  "resource_version": 21,
+  "metadata": {
+    "version": 3,
+    "sources": [
+      {
+        "name": "default",
+        "kind": "postgres",
+        "tables": [
+          {
+            "table": {
+              "name": "Account",
+              "schema": "public"
+            },
+            "array_relationships": [
+              {
+                "name": "salesAsOfferer",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "id": "offerer_id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Sale",
+                      "schema": "public"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "salesAsRecipient",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "id": "recipient_id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Sale",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": ["address", "id"],
+                  "filter": {},
+                  "allow_aggregations": true
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "Account_history",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "NFTContract",
+              "schema": "public"
+            },
+            "array_relationships": [
+              {
+                "name": "tokens",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "id": "contract_id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "NFTToken",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": ["address", "id"],
+                  "filter": {},
+                  "allow_aggregations": true
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "NFTContract_history",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "NFTToken",
+              "schema": "public"
+            },
+            "object_relationships": [
+              {
+                "name": "contract",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "contract_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "NFTContract",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "array_relationships": [
+              {
+                "name": "sales",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "id": "nftToken_id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "SaleNFT",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": ["contract_id", "id", "tokenId"],
+                  "filter": {},
+                  "allow_aggregations": true
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "NFTToken_history",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "Sale",
+              "schema": "public"
+            },
+            "object_relationships": [
+              {
+                "name": "offerer",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "offerer_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Account",
+                      "schema": "public"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "recipient",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "recipient_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Account",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "array_relationships": [
+              {
+                "name": "nfts",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "id": "sale_id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "SaleNFT",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": [
+                    "considerationAmounts",
+                    "considerationIdentifiers",
+                    "considerationItemTypes",
+                    "considerationRecipients",
+                    "considerationTokens",
+                    "id",
+                    "market",
+                    "offerAmounts",
+                    "offerIdentifiers",
+                    "offerItemTypes",
+                    "offerTokens",
+                    "offerer_id",
+                    "recipient_id",
+                    "timestamp",
+                    "transactionHash"
+                  ],
+                  "filter": {},
+                  "allow_aggregations": true
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "SaleNFT",
+              "schema": "public"
+            },
+            "object_relationships": [
+              {
+                "name": "nftToken",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "nftToken_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "NFTToken",
+                      "schema": "public"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "sale",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "sale_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Sale",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": ["id", "isOffer", "nftToken_id", "sale_id"],
+                  "filter": {},
+                  "allow_aggregations": true
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "SaleNFT_history",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "Sale_history",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "_meta",
+              "schema": "public"
+            },
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": [
+                    "isReady",
+                    "bufferBlock",
+                    "chainId",
+                    "endBlock",
+                    "eventsProcessed",
+                    "firstEventBlock",
+                    "progressBlock",
+                    "sourceBlock",
+                    "startBlock",
+                    "readyAt"
+                  ],
+                  "filter": {},
+                  "allow_aggregations": true
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "chain_metadata",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "dynamic_contract_registry",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "dynamic_contract_registry_history",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "end_of_block_range_scanned_data",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "envio_chains",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "persisted_state",
+              "schema": "public"
+            }
+          },
+          {
+            "table": {
+              "name": "raw_events",
+              "schema": "public"
+            }
+          }
+        ],
+        "configuration": {
+          "connection_info": {
+            "database_url": {
+              "from_env": "HASURA_GRAPHQL_DATABASE_URL"
+            },
+            "isolation_level": "read-committed",
+            "pool_settings": {
+              "connection_lifetime": 600,
+              "idle_timeout": 180,
+              "max_connections": 50,
+              "retries": 10
+            },
+            "use_prepared_statements": true
+          }
+        }
+      }
+    ]
+  }
+}
