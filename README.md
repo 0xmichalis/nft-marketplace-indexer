@@ -143,8 +143,10 @@ pnpm codegen
 
 ### Run
 
+The following command assumes you run a Postgres database at `0.0.0.0:5432`.
+
 ```bash
-pnpm dev
+pnpm start
 ```
 
 Visit http://localhost:8080 to see the GraphQL Playground, local password is `testing`.
