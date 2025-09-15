@@ -76,3 +76,10 @@ networks:
         handler: src/CryptoPunksEventHandlers.ts
         events:
           - event: PunkBought(uint indexed tokenId, uint value, address indexed fromAddress, address indexed toAddress)
+
+      - name: Seadrop
+        address:
+          - "0x00005EA00Ac477B1030CE78506496e8C2dE24bf5"
+        handler: src/SeadropEventHandlers.ts
+        events:
+          - event: SeaDropMint(address indexed nftContract, address indexed minter, address indexed feeRecipient, address payer, uint256 quantityMinted, uint256 unitMintPrice, uint256 feeBps, uint256 dropStageIndex)

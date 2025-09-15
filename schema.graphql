@@ -77,3 +77,9 @@ type FoundationAuction {
   nftContract: String!
   tokenId: String!
 }
+
+# Contract counter for tracking minted token IDs
+type SeadropCounter {
+  id: ID! # contract address
+  counter: BigInt! # current counter value
+}
