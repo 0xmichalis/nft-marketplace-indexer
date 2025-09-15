@@ -1,0 +1,49 @@
+# VCS
+.git
+.git/**
+
+# Editor/OS
+.vscode
+.idea
+.DS_Store
+*.swp
+*.swo
+
+# Logs and coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+coverage
+
+# Package manager caches
+.pnpm-store
+.pnp.*
+.npmrc
+
+# Local deps and builds (installed inside image)
+node_modules
+build
+/dist
+
+# Tests and docs not needed in image
+/test
+/tests
+**/*.spec.*
+**/*.test.*
+README.md
+
+# Env files
+.env
+.env.*
+
+# Generated artifacts (will be re-generated in builder)
+/generated
+
+# Compose and local config
+podman-compose.yaml
+docker-compose.yml
+docker-compose.yaml
+
+# Other
+*.tgz
