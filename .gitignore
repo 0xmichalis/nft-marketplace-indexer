@@ -33,4 +33,5 @@ logs
 *.res.mjs
 *.gen.ts
 build
-.env
+.env*
+!.env.*.example
