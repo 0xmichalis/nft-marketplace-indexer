@@ -7,7 +7,8 @@ services:
     env_file:
       - .env.hasura
     environment:
-      HASURA_GRAPHQL_ENABLE_CONSOLE: false
+      HASURA_GRAPHQL_DEFAULT_NAMING_CONVENTION: graphql-default
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
       HASURA_GRAPHQL_NO_OF_RETRIES: 10
       HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "true"
