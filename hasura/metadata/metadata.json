@@ -14,30 +14,45 @@
             },
             "array_relationships": [
               {
-                "name": "salesAsOfferer",
+                "name": "buys",
                 "using": {
                   "manual_configuration": {
                     "column_mapping": {
-                      "id": "offerer_id"
+                      "id": "account_id"
                     },
                     "insertion_order": null,
                     "remote_table": {
-                      "name": "Sale",
+                      "name": "AccountBuy",
                       "schema": "public"
                     }
                   }
                 }
               },
               {
-                "name": "salesAsRecipient",
+                "name": "sells",
                 "using": {
                   "manual_configuration": {
                     "column_mapping": {
-                      "id": "recipient_id"
+                      "id": "account_id"
                     },
                     "insertion_order": null,
                     "remote_table": {
-                      "name": "Sale",
+                      "name": "AccountSell",
+                      "schema": "public"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "swaps",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "id": "account_id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "AccountSwap",
                       "schema": "public"
                     }
                   }
@@ -280,6 +295,150 @@
                 "role": "public",
                 "permission": {
                   "columns": ["isOffer", "id", "nftToken_id", "sale_id", "db_write_timestamp"],
+                  "filter": {}
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "AccountBuy",
+              "schema": "public"
+            },
+            "object_relationships": [
+              {
+                "name": "account",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "account_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Account",
+                      "schema": "public"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "sale",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "sale_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Sale",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": ["id", "account_id", "sale_id", "db_write_timestamp"],
+                  "filter": {}
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "AccountSell",
+              "schema": "public"
+            },
+            "object_relationships": [
+              {
+                "name": "account",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "account_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Account",
+                      "schema": "public"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "sale",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "sale_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Sale",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": ["id", "account_id", "sale_id", "db_write_timestamp"],
+                  "filter": {}
+                },
+                "comment": ""
+              }
+            ]
+          },
+          {
+            "table": {
+              "name": "AccountSwap",
+              "schema": "public"
+            },
+            "object_relationships": [
+              {
+                "name": "account",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "account_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Account",
+                      "schema": "public"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "sale",
+                "using": {
+                  "manual_configuration": {
+                    "column_mapping": {
+                      "sale_id": "id"
+                    },
+                    "insertion_order": null,
+                    "remote_table": {
+                      "name": "Sale",
+                      "schema": "public"
+                    }
+                  }
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "public",
+                "permission": {
+                  "columns": ["id", "account_id", "sale_id", "db_write_timestamp"],
                   "filter": {}
                 },
                 "comment": ""
