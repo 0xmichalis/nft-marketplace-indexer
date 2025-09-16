@@ -1,7 +1,15 @@
 /**
  * Helper functions for creating and updating entities with relationships
  */
-import { Account, NFTContract, NFTToken, SaleNFT } from "generated";
+import {
+  Account,
+  NFTContract,
+  NFTToken,
+  SaleNFT,
+  AccountBuy,
+  AccountSell,
+  AccountSwap,
+} from "generated";
 
 /**
  * Get or create an Account entity
@@ -148,5 +156,79 @@ export async function createSaleNFTJunctions(
     };
 
     context.SaleNFT.set(saleNft);
+  }
+}
+
+/**
+ * Create an AccountBuy junction for a given account and sale
+ */
+export function createAccountBuy(context: any, accountId: string, saleId: string): void {
+  const buy: AccountBuy = {
+    id: `${accountId}:${saleId}`,
+    account_id: accountId,
+    sale_id: saleId,
+  };
+  context.AccountBuy.set(buy);
+}
+
+/**
+ * Create an AccountSell junction for a given account and sale
+ */
+export function createAccountSell(context: any, accountId: string, saleId: string): void {
+  const sell: AccountSell = {
+    id: `${accountId}:${saleId}`,
+    account_id: accountId,
+    sale_id: saleId,
+  };
+  context.AccountSell.set(sell);
+}
+
+/**
+ * Create an AccountSwap junction for a given account and sale
+ */
+export function createAccountSwap(context: any, accountId: string, saleId: string): void {
+  const swap: AccountSwap = {
+    id: `${accountId}:${saleId}`,
+    account_id: accountId,
+    sale_id: saleId,
+  };
+  context.AccountSwap.set(swap);
+}
+
+/**
+ * Classify a sale into account-level buy/sell/swap junctions
+ * based on where NFTs appear (offer vs consideration) and the primary
+ * participants (offerer, recipient).
+ */
+export function createAccountJunctionsForSale(
+  context: any,
+  params: {
+    saleId: string;
+    offererId: string;
+    recipientId: string;
+    hasOfferNfts: boolean;
+    hasConsiderationNfts: boolean;
+  }
+): void {
+  const { saleId, offererId, recipientId, hasOfferNfts, hasConsiderationNfts } = params;
+
+  if (hasOfferNfts && hasConsiderationNfts) {
+    // Swap for both parties
+    createAccountSwap(context, offererId, saleId);
+    createAccountSwap(context, recipientId, saleId);
+    return;
+  }
+
+  if (hasOfferNfts) {
+    // NFTs in offer: offerer sells, recipient buys
+    createAccountSell(context, offererId, saleId);
+    createAccountBuy(context, recipientId, saleId);
+    return;
+  }
+
+  if (hasConsiderationNfts) {
+    // NFTs in consideration: offerer buys, recipient sells (best-effort)
+    createAccountBuy(context, offererId, saleId);
+    createAccountSell(context, recipientId, saleId);
   }
 }

@@ -1,9 +1,11 @@
-import { KnownOrigin, Sale, AccountBuy, AccountSell } from "generated";
+import { KnownOrigin, Sale } from "generated";
 
 import {
   getOrCreateAccount,
   extractNFTIds,
   createSaleNFTJunctions,
+  createAccountBuy,
+  createAccountSell,
 } from "./entities/EntityHelpers";
 
 KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
@@ -61,12 +63,6 @@ KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
   // Account-level classification: seller sells, buyer buys
   const sellerId = event.params.currentOwner.toLowerCase();
   const buyerId = event.params.buyer.toLowerCase();
-  const seller: AccountSell = {
-    id: `${sellerId}:${saleId}`,
-    account_id: sellerId,
-    sale_id: saleId,
-  };
-  const buyer: AccountBuy = { id: `${buyerId}:${saleId}`, account_id: buyerId, sale_id: saleId };
-  context.AccountSell.set(seller);
-  context.AccountBuy.set(buyer);
+  createAccountSell(context, sellerId, saleId);
+  createAccountBuy(context, buyerId, saleId);
 });
