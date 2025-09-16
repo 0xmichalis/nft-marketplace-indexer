@@ -12,11 +12,11 @@ services:
       HASURA_GRAPHQL_DEFAULT_NAMING_CONVENTION: graphql-default
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+      HASURA_GRAPHQL_METADATA_DIR: /metadata
       HASURA_GRAPHQL_NO_OF_RETRIES: 10
       HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "true"
-      PORT: 8080
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: public
-      HASURA_GRAPHQL_METADATA_DIR: /metadata
+      PORT: 8080
     networks:
       - indexer-network
   indexer:
@@ -29,24 +29,24 @@ services:
     env_file:
       - .env.indexer
     environment:
-      ENVIO_PG_PORT: 5432
-      ENVIO_PG_USER: enviouser
+      CONFIG_FILE: config.yaml
       ENVIO_PG_DATABASE: enviodb
+      ENVIO_PG_PORT: 5432
       ENVIO_PG_PUBLIC_SCHEMA: public
       ENVIO_PG_SSL_MODE: "false"
+      ENVIO_PG_USER: enviouser
       ENVIO_INDEXER_HOST: 0.0.0.0
       ENVIO_INDEXER_PORT: 9898
-      CONFIG_FILE: config.yaml
-      LOG_LEVEL: trace
-      LOG_STRATEGY: console-pretty
+      ENVIO_THROTTLE_CHAIN_METADATA_INTERVAL_MILLIS: 30000
+      ENVIO_THROTTLE_JSON_FILE_BENCHMARK_INTERVAL_MILLIS: 60000
+      ENVIO_THROTTLE_LIVE_METRICS_BENCHMARK_INTERVAL_MILLIS: 60000
+      ENVIO_THROTTLE_PRUNE_STALE_DATA_INTERVAL_MILLIS: 60000
       HASURA_GRAPHQL_ENDPOINT: http://graphql-engine:8080/v1/metadata
       HASURA_GRAPHQL_ROLE: admin
       HASURA_SERVICE_HOST: graphql-engine
       HASURA_SERVICE_PORT: 8080
-      ENVIO_THROTTLE_CHAIN_METADATA_INTERVAL_MILLIS: 30000
-      ENVIO_THROTTLE_PRUNE_STALE_DATA_INTERVAL_MILLIS: 60000
-      ENVIO_THROTTLE_LIVE_METRICS_BENCHMARK_INTERVAL_MILLIS: 60000
-      ENVIO_THROTTLE_JSON_FILE_BENCHMARK_INTERVAL_MILLIS: 60000
+      LOG_LEVEL: trace
+      LOG_STRATEGY: console-pretty
       TUI_OFF: "true"
     networks:
       - indexer-network
