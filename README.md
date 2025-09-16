@@ -12,48 +12,72 @@ _Please refer to the [documentation website](https://docs.envio.dev) for a thoro
 
 ### 1. User Activity Queries
 
-**Find orders by user address**
+**Find buys, sells, and swaps by user address**
 
 ```graphql
-query SalesByUser($userAddress: String!) {
+query SalesByUser($userAddress: String!, $limit: Int) {
   Account(where: { address: { _eq: $userAddress } }) {
     id
     address
-    salesAsOfferer(order_by: { timestamp: desc }) {
-      id
-      timestamp
-      transactionHash
-      market
-      offerer {
-        address
+    buys(order_by: { sale: { timestamp: desc } }, limit: $limit) {
+      sale {
+        id
+        timestamp
+        transactionHash
+        market
+        offerer {
+          address
+        }
+        recipient {
+          address
+        }
+        offerTokens
+        offerIdentifiers
+        offerAmounts
+        considerationTokens
+        considerationIdentifiers
+        considerationAmounts
       }
-      recipient {
-        address
-      }
-      offerTokens
-      offerIdentifiers
-      offerAmounts
-      considerationTokens
-      considerationIdentifiers
-      considerationAmounts
     }
-    salesAsRecipient(order_by: { timestamp: desc }) {
-      id
-      timestamp
-      transactionHash
-      market
-      offerer {
-        address
+    sells(order_by: { sale: { timestamp: desc } }, limit: $limit) {
+      sale {
+        id
+        timestamp
+        transactionHash
+        market
+        offerer {
+          address
+        }
+        recipient {
+          address
+        }
+        offerTokens
+        offerIdentifiers
+        offerAmounts
+        considerationTokens
+        considerationIdentifiers
+        considerationAmounts
       }
-      recipient {
-        address
+    }
+    swaps(order_by: { sale: { timestamp: desc } }, limit: $limit) {
+      sale {
+        id
+        timestamp
+        transactionHash
+        market
+        offerer {
+          address
+        }
+        recipient {
+          address
+        }
+        offerTokens
+        offerIdentifiers
+        offerAmounts
+        considerationTokens
+        considerationIdentifiers
+        considerationAmounts
       }
-      offerTokens
-      offerIdentifiers
-      offerAmounts
-      considerationTokens
-      considerationIdentifiers
-      considerationAmounts
     }
   }
 }

@@ -49,11 +49,14 @@ export const QUERIES = {
         Account(where: { address: { _eq: $userAddress } }) {
           id
           address
-          salesAsOfferer(order_by: { timestamp: desc }, limit: $limit) {
-            ${QUERY_FRAGMENTS.orderFullDetails}
+          buys(order_by: { sale: { timestamp: desc } }, limit: $limit) {
+            sale { ${QUERY_FRAGMENTS.orderFullDetails} }
           }
-          salesAsRecipient(order_by: { timestamp: desc }, limit: $limit) {
-            ${QUERY_FRAGMENTS.orderFullDetails}
+          sells(order_by: { sale: { timestamp: desc } }, limit: $limit) {
+            sale { ${QUERY_FRAGMENTS.orderFullDetails} }
+          }
+          swaps(order_by: { sale: { timestamp: desc } }, limit: $limit) {
+            sale { ${QUERY_FRAGMENTS.orderFullDetails} }
           }
         }
       }
@@ -152,8 +155,9 @@ export interface SalesByUserResponse {
   Account: Array<{
     id: string;
     address: string;
-    salesAsOfferer: Sale[];
-    salesAsRecipient: Sale[];
+    buys: Array<{ sale: Sale }>;
+    sells: Array<{ sale: Sale }>;
+    swaps: Array<{ sale: Sale }>;
   }>;
 }
 
@@ -163,8 +167,9 @@ export interface SalesByUserResponse {
 export interface AccountWithSalesResponse {
   id: string;
   address: string;
-  salesAsOfferer: Sale[];
-  salesAsRecipient: Sale[];
+  buys: Array<{ sale: Sale }>;
+  sells: Array<{ sale: Sale }>;
+  swaps: Array<{ sale: Sale }>;
 }
 
 export interface NFTContractWithSalesResponse {
@@ -212,7 +217,8 @@ export interface UserCompleteActivityResponse {
   account: Array<{
     id: string;
     address: string;
-    salesAsOfferer: Array<Sale>;
-    salesAsRecipient: Array<Sale>;
+    buys: Array<{ sale: Sale }>;
+    sells: Array<{ sale: Sale }>;
+    swaps: Array<{ sale: Sale }>;
   }>;
 }

@@ -1,4 +1,4 @@
-import { SuperRareV1, Sale } from "generated";
+import { SuperRareV1, Sale, AccountBuy, AccountSell } from "generated";
 
 import {
   getOrCreateAccount,
@@ -56,4 +56,16 @@ SuperRareV1.Sold.handler(async ({ event, context }) => {
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
+
+  // Account-level classification
+  const sellerId = event.params.seller.toLowerCase();
+  const buyerId = event.params.buyer.toLowerCase();
+  const seller: AccountSell = {
+    id: `${sellerId}:${saleId}`,
+    account_id: sellerId,
+    sale_id: saleId,
+  };
+  const buyer: AccountBuy = { id: `${buyerId}:${saleId}`, account_id: buyerId, sale_id: saleId };
+  context.AccountSell.set(seller);
+  context.AccountBuy.set(buyer);
 });

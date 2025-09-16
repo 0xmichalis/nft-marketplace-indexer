@@ -1,4 +1,4 @@
-import { Seaport, Sale } from "generated";
+import { Seaport, Sale, AccountBuy, AccountSell, AccountSwap } from "generated";
 
 import {
   getOrCreateAccount,
@@ -96,4 +96,55 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
+
+  // Account-level classification: buys, sells, swaps
+  const offererId = event.params.offerer.toLowerCase();
+  const recipientId = event.params.recipient.toLowerCase();
+  const hasOfferNfts = offerNftItems.length > 0;
+  const hasConsiderationNfts = considerationNftItems.length > 0;
+
+  if (hasOfferNfts && hasConsiderationNfts) {
+    // Swap for both parties
+    const offererSwap: AccountSwap = {
+      id: `${offererId}:${saleId}`,
+      account_id: offererId,
+      sale_id: saleId,
+    };
+    const recipientSwap: AccountSwap = {
+      id: `${recipientId}:${saleId}`,
+      account_id: recipientId,
+      sale_id: saleId,
+    };
+    context.AccountSwap.set(offererSwap);
+    context.AccountSwap.set(recipientSwap);
+  } else if (hasOfferNfts) {
+    // NFTs in offer: offerer sells, recipient buys
+    const seller: AccountSell = {
+      id: `${offererId}:${saleId}`,
+      account_id: offererId,
+      sale_id: saleId,
+    };
+    const buyer: AccountBuy = {
+      id: `${recipientId}:${saleId}`,
+      account_id: recipientId,
+      sale_id: saleId,
+    };
+    context.AccountSell.set(seller);
+    context.AccountBuy.set(buyer);
+  } else if (hasConsiderationNfts) {
+    // NFTs in consideration: offerer buys; recipients of those NFT items buy as well, but we mark the primary buyer as offerer
+    const buyer: AccountBuy = {
+      id: `${offererId}:${saleId}`,
+      account_id: offererId,
+      sale_id: saleId,
+    };
+    context.AccountBuy.set(buyer);
+    // Best effort: also mark sellers as the global recipient, since precise NFT senders aren't explicit in event
+    const seller: AccountSell = {
+      id: `${recipientId}:${saleId}`,
+      account_id: recipientId,
+      sale_id: saleId,
+    };
+    context.AccountSell.set(seller);
+  }
 });

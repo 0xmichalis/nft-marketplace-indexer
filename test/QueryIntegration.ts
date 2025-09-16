@@ -42,7 +42,7 @@ describe("GraphQL Query Integration Tests", () => {
   describe("User Activity Queries", () => {
     const testUserAddress = "0x56E81BC43A5fc9a01Ff000270bc55a02df268147";
 
-    it("should find orders where user is offerer or recipient", async function () {
+    it("should find buys, sells, and swaps for user", async function () {
       if (!client) throw new Error("GraphQL client not initialized");
 
       const result = await client.query<SalesByUserResponse>(QUERIES.salesByUser, {
@@ -63,32 +63,38 @@ describe("GraphQL Query Integration Tests", () => {
         // Verify account structure
         assert(typeof account.id === "string", "Account should have id");
         assert(typeof account.address === "string", "Account should have address");
-        assert(Array.isArray(account.salesAsOfferer), "Account should have salesAsOfferer array");
-        assert(
-          Array.isArray(account.salesAsRecipient),
-          "Account should have salesAsRecipient array"
-        );
+        assert(Array.isArray(account.buys), "Account should have buys array");
+        assert(Array.isArray(account.sells), "Account should have sells array");
+        assert(Array.isArray(account.swaps), "Account should have swaps array");
 
-        const totalSales = account.salesAsOfferer.length + account.salesAsRecipient.length;
+        const totalSales = account.buys.length + account.sells.length + account.swaps.length;
         console.log(`✅ Account ID: ${account.id}`);
         console.log(`   Address: ${account.address}`);
-        console.log(`   Sales as Offerer: ${account.salesAsOfferer.length}`);
-        console.log(`   Sales as Recipient: ${account.salesAsRecipient.length}`);
+        console.log(`   Buys: ${account.buys.length}`);
+        console.log(`   Sells: ${account.sells.length}`);
+        console.log(`   Swaps: ${account.swaps.length}`);
         console.log(`   Total Sales: ${totalSales}`);
 
         // Test the first sale if available
-        if (account.salesAsOfferer.length > 0) {
-          const firstSale = account.salesAsOfferer[0];
+        if (account.buys.length > 0) {
+          const firstSale = account.buys[0].sale;
           assert(typeof firstSale.id === "string", "Sale should have id");
           assert(typeof firstSale.transactionHash === "string", "Sale should have transactionHash");
-          console.log(`   First offerer sale: ${firstSale.id}`);
+          console.log(`   First buy: ${firstSale.id}`);
         }
 
-        if (account.salesAsRecipient.length > 0) {
-          const firstSale = account.salesAsRecipient[0];
+        if (account.sells.length > 0) {
+          const firstSale = account.sells[0].sale;
           assert(typeof firstSale.id === "string", "Sale should have id");
           assert(typeof firstSale.transactionHash === "string", "Sale should have transactionHash");
-          console.log(`   First recipient sale: ${firstSale.id}`);
+          console.log(`   First sell: ${firstSale.id}`);
+        }
+
+        if (account.swaps.length > 0) {
+          const firstSale = account.swaps[0].sale;
+          assert(typeof firstSale.id === "string", "Sale should have id");
+          assert(typeof firstSale.transactionHash === "string", "Sale should have transactionHash");
+          console.log(`   First swap: ${firstSale.id}`);
         }
       } else {
         console.log(`ℹ️  No account found for user ${testUserAddress}`);
@@ -297,8 +303,8 @@ describe("GraphQL Query Integration Tests", () => {
 
           // Show details for the latest sale
           console.log(`   Market: ${firstSale.market}`);
-          console.log(`   Offerer: ${firstSale.offerer}`);
-          console.log(`   Recipient: ${firstSale.recipient}`);
+          console.log(`   Offerer: ${firstSale.offerer.address}`);
+          console.log(`   Recipient: ${firstSale.recipient.address}`);
           console.log(
             `   Timestamp: ${new Date(parseInt(firstSale.timestamp) * 1000).toISOString()}`
           );

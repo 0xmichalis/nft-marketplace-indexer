@@ -1,4 +1,4 @@
-import { SuperRareBazaar, Sale } from "generated";
+import { SuperRareBazaar, Sale, AccountBuy, AccountSell } from "generated";
 
 import {
   getOrCreateAccount,
@@ -58,6 +58,18 @@ SuperRareBazaar.AcceptOffer.handler(async ({ event, context }) => {
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
+
+  // Account-level classification
+  const sellerId = event.params.seller.toLowerCase();
+  const buyerId = event.params.bidder.toLowerCase();
+  const seller: AccountSell = {
+    id: `${sellerId}:${saleId}`,
+    account_id: sellerId,
+    sale_id: saleId,
+  };
+  const buyer: AccountBuy = { id: `${buyerId}:${saleId}`, account_id: buyerId, sale_id: saleId };
+  context.AccountSell.set(seller);
+  context.AccountBuy.set(buyer);
 });
 
 SuperRareBazaar.Sold.handler(async ({ event, context }) => {
@@ -112,6 +124,20 @@ SuperRareBazaar.Sold.handler(async ({ event, context }) => {
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
+
+  // Account-level classification
+  {
+    const sellerId = event.params.seller.toLowerCase();
+    const buyerId = event.params.buyer.toLowerCase();
+    const seller: AccountSell = {
+      id: `${sellerId}:${saleId}`,
+      account_id: sellerId,
+      sale_id: saleId,
+    };
+    const buyer: AccountBuy = { id: `${buyerId}:${saleId}`, account_id: buyerId, sale_id: saleId };
+    context.AccountSell.set(seller);
+    context.AccountBuy.set(buyer);
+  }
 });
 
 SuperRareBazaar.AuctionSettled.handler(async ({ event, context }) => {
@@ -166,4 +192,18 @@ SuperRareBazaar.AuctionSettled.handler(async ({ event, context }) => {
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
+
+  // Account-level classification
+  {
+    const sellerId = event.params.seller.toLowerCase();
+    const buyerId = event.params.bidder.toLowerCase();
+    const seller: AccountSell = {
+      id: `${sellerId}:${saleId}`,
+      account_id: sellerId,
+      sale_id: saleId,
+    };
+    const buyer: AccountBuy = { id: `${buyerId}:${saleId}`, account_id: buyerId, sale_id: saleId };
+    context.AccountSell.set(seller);
+    context.AccountBuy.set(buyer);
+  }
 });

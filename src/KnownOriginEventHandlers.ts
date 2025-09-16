@@ -1,4 +1,4 @@
-import { KnownOrigin, Sale } from "generated";
+import { KnownOrigin, Sale, AccountBuy, AccountSell } from "generated";
 
 import {
   getOrCreateAccount,
@@ -57,4 +57,16 @@ KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
+
+  // Account-level classification: seller sells, buyer buys
+  const sellerId = event.params.currentOwner.toLowerCase();
+  const buyerId = event.params.buyer.toLowerCase();
+  const seller: AccountSell = {
+    id: `${sellerId}:${saleId}`,
+    account_id: sellerId,
+    sale_id: saleId,
+  };
+  const buyer: AccountBuy = { id: `${buyerId}:${saleId}`, account_id: buyerId, sale_id: saleId };
+  context.AccountSell.set(seller);
+  context.AccountBuy.set(buyer);
 });

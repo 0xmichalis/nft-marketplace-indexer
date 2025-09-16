@@ -1,8 +1,9 @@
 type Account {
   id: ID! # wallet address (lowercase)
   address: String! # original case address
-  salesAsOfferer: [Sale!]! @derivedFrom(field: "offerer")
-  salesAsRecipient: [Sale!]! @derivedFrom(field: "recipient")
+  buys: [AccountBuy!]! @derivedFrom(field: "account")
+  sells: [AccountSell!]! @derivedFrom(field: "account")
+  swaps: [AccountSwap!]! @derivedFrom(field: "account")
 }
 
 type NFTContract {
@@ -51,4 +52,22 @@ type SaleNFT {
   sale: Sale!
   nftToken: NFTToken!
   isOffer: Boolean! # true if this NFT was in the offer, false if in consideration
+}
+
+type AccountBuy {
+  id: ID! # accountId:saleId
+  account: Account!
+  sale: Sale!
+}
+
+type AccountSell {
+  id: ID! # accountId:saleId
+  account: Account!
+  sale: Sale!
+}
+
+type AccountSwap {
+  id: ID! # accountId:saleId
+  account: Account!
+  sale: Sale!
 }
