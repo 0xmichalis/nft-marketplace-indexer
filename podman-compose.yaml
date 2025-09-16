@@ -21,6 +21,7 @@ services:
       - indexer-network
   indexer:
     image: ghcr.io/0xmichalis/nft-marketplace-indexer:latest
+    pull_policy: always
     ports:
       - "127.0.0.1:9898:9898"
     depends_on:
