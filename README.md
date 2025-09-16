@@ -1,65 +1,29 @@
 ## NFT Marketplace Indexer
 
-_Please refer to the [documentation website](https://docs.envio.dev) for a thorough guide on all [Envio](https://envio.dev) indexer features_
+[![CI](https://github.com/0xmichalis/nft-marketplace-indexer/actions/workflows/ci.yml/badge.svg)](https://github.com/0xmichalis/nft-marketplace-indexer/actions/workflows/ci.yml)
+
+Indexer for various NFT marketplaces on Ethereum (Seaport, SuperRare, KnownOrigin, etc.). Envio is used as the indexer framework. Please refer to the [Envio documentation website](https://docs.envio.dev) for a thorough guide on all [Envio](https://envio.dev) indexer features.
 
 ### Pre-requisites
 
 - [Node.js (use v18 or newer)](https://nodejs.org/en/download/current)
-- [pnpm (use v8 or newer)](https://pnpm.io/installation)
-- [Docker desktop](https://www.docker.com/products/docker-desktop/) (for local deployments)
+- [pnpm (use v9 or newer)](https://pnpm.io/installation)
+- [Podman](https://podman.io/) (for deployments)
 
 ## Example queries
 
 ### 1. User Activity Queries
 
-**Find buys, sells, and swaps by user address**
+**Find buys, sells, or swaps by user address**
+
+The following query returns `buys`. Simply replace `buys` with `sells` or `swaps` for the other two types of trades.
 
 ```graphql
-query SalesByUser($userAddress: String!, $limit: Int) {
+query SalesByUser($userAddress: String!) {
   Account(where: { address: { _eq: $userAddress } }) {
     id
     address
-    buys(order_by: { sale: { timestamp: desc } }, limit: $limit) {
-      sale {
-        id
-        timestamp
-        transactionHash
-        market
-        offerer {
-          address
-        }
-        recipient {
-          address
-        }
-        offerTokens
-        offerIdentifiers
-        offerAmounts
-        considerationTokens
-        considerationIdentifiers
-        considerationAmounts
-      }
-    }
-    sells(order_by: { sale: { timestamp: desc } }, limit: $limit) {
-      sale {
-        id
-        timestamp
-        transactionHash
-        market
-        offerer {
-          address
-        }
-        recipient {
-          address
-        }
-        offerTokens
-        offerIdentifiers
-        offerAmounts
-        considerationTokens
-        considerationIdentifiers
-        considerationAmounts
-      }
-    }
-    swaps(order_by: { sale: { timestamp: desc } }, limit: $limit) {
+    buys(order_by: { sale: { timestamp: desc } }) {
       sale {
         id
         timestamp
@@ -165,27 +129,43 @@ query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
 pnpm codegen
 ```
 
-### Run
+### Test
 
-The following command assumes you run a Postgres database at `0.0.0.0:5432`.
+A Graph URL (`GRAPH_API_URL`) needs to be provided in order to run test queries against a deployed Graph. If not provided, the query tests will be skipped.
+
+```bash
+# Run all tests
+pnpm test
+
+# Run only GraphQL integration tests
+pnpm test:queries
+
+# Run only unit tests
+pnpm test:unit
+```
+
+## Deployment
+
+The following command will run the indexer and Hasura. It assumes a Postgres database runs at `0.0.0.0:5432` (or whatever is the host that has been configured in `.env.hasura` and `.env.indexer`). You have to create the `enviouser` user and `enviodb` database with `enviouser` as the owner manually beforehand.
 
 ```bash
 pnpm start
 ```
 
-Visit http://localhost:8080 to see the GraphQL Playground, local password is `testing`.
+Visit http://localhost:8080 and navigate to `Data` and click to track all database tables. Then you should be able to start using the playground.
 
-### Test
+### Upgrades
 
-A Graph URL (`GRAPH_API_URL`) needs to be provided in order to run test queries against a deployed Graph.
+Stop both the indexer and Hasura.
 
-```bash
-# Run all tests; define GRAPH_API_URL to include the query tests
-pnpm test
+```
+pnpm stop
+```
 
-# Run only GraphQL integration tests
-GRAPH_API_URL=https://your-indexer-endpoint.com/graphql pnpm test:queries
+If there are schema changes, drop all tables from the database across both schemas (the indexer is using a different schema from Hasura). TODO: Use [`envio local db-migrate up`](https://docs.envio.dev/docs/HyperIndex/cli-commands#envio-local-db-migrate-up) instead.
 
-# Run only unit tests (mocks)
-pnpm test:unit
+Restart the services and track the tables in Hasura.
+
+```
+pnpm start
 ```
