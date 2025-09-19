@@ -202,6 +202,128 @@ describe("Seaport contract OrderFulfilled event tests", () => {
   });
 });
 
+describe("Seaport ERC1155 tests", () => {
+  let mockDb: any;
+
+  beforeEach(() => {
+    mockDb = MockDb.createMockDb();
+  });
+
+  it("Creates sale for single ERC1155 offer (amount > 1)", async () => {
+    const OFFERER = "0xabcabcabcabcabcabcabcabcabcabcabcabcabca";
+    const RECIPIENT = "0xdefdefdefdefdefdefdefdefdefdefdefdefdefd";
+    const NFT_CONTRACT = "0x9999999999999999999999999999999999999999";
+    const TOKEN_ID = 777n;
+    const AMOUNT = 5n; // ERC1155 quantity
+
+    const event = Seaport.OrderFulfilled.createMockEvent({
+      orderHash: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      offerer: OFFERER,
+      zone: "0x0000000000000000000000000000000000000000",
+      recipient: RECIPIENT,
+      offer: [[3n, NFT_CONTRACT, TOKEN_ID, AMOUNT] as [bigint, string, bigint, bigint]], // ERC1155
+      consideration: [
+        [0n, "0x0000000000000000000000000000000000000000", 0n, 4200000000000000000n, OFFERER] as [
+          bigint,
+          string,
+          bigint,
+          bigint,
+          string,
+        ],
+      ],
+      mockEventData: {
+        block: { number: 18600000, timestamp: 1710000000, hash: "0xblockerc1155a" },
+        transaction: { hash: "0xtxerc1155a" },
+        chainId: 1,
+        logIndex: 10,
+      },
+    });
+
+    const updatedDb = await Seaport.OrderFulfilled.processEvent({ event, mockDb });
+
+    const saleId = `${event.chainId}_${event.transaction.hash}`;
+    const sale = updatedDb.entities.Sale.get(saleId);
+    assert.ok(sale, "Sale should be created");
+
+    // Validate offer arrays captured ERC1155 correctly
+    assert.equal(sale.offerItemTypes[0], 3, "Item type should be ERC1155");
+    assert.equal(sale.offerTokens[0], NFT_CONTRACT, "Contract address should match");
+    assert.equal(sale.offerIdentifiers[0], TOKEN_ID.toString(), "Token id should match");
+    assert.equal(sale.offerAmounts[0], AMOUNT.toString(), "Amount should match ERC1155 quantity");
+
+    // Validate SaleNFT junction exists
+    const saleNfts = updatedDb.entities.SaleNFT.getAll().filter((sn: any) => sn.sale_id === saleId);
+    assert.equal(saleNfts.length, 1, "One NFT junction expected");
+    assert.equal(
+      saleNfts[0].nftToken_id,
+      `${NFT_CONTRACT.toLowerCase()}:${TOKEN_ID.toString()}`,
+      "NFT junction should point to ERC1155 token"
+    );
+
+    // Validate token entity
+    const nftToken = updatedDb.entities.NFTToken.get(
+      `${NFT_CONTRACT.toLowerCase()}:${TOKEN_ID.toString()}`
+    );
+    assert.ok(nftToken, "NFTToken should exist");
+  });
+
+  it("Handles bundle with ERC721 and ERC1155 in offer and ETH consideration", async () => {
+    const OFFERER = "0x1212121212121212121212121212121212121212";
+    const RECIPIENT = "0x3434343434343434343434343434343434343434";
+    const NFT721 = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const NFT1155 = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+    const event = Seaport.OrderFulfilled.createMockEvent({
+      orderHash: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      offerer: OFFERER,
+      zone: "0x0000000000000000000000000000000000000000",
+      recipient: RECIPIENT,
+      offer: [
+        [2n, NFT721, 101n, 1n] as [bigint, string, bigint, bigint], // ERC721
+        [3n, NFT1155, 202n, 3n] as [bigint, string, bigint, bigint], // ERC1155 amount 3
+      ],
+      consideration: [
+        [0n, "0x0000000000000000000000000000000000000000", 0n, 1500000000000000000n, OFFERER] as [
+          bigint,
+          string,
+          bigint,
+          bigint,
+          string,
+        ],
+      ],
+      mockEventData: {
+        block: { number: 18600001, timestamp: 1710000100, hash: "0xblockerc1155b" },
+        transaction: { hash: "0xtxerc1155b" },
+        chainId: 1,
+        logIndex: 11,
+      },
+    });
+
+    const updatedDb = await Seaport.OrderFulfilled.processEvent({ event, mockDb });
+
+    const saleId = `${event.chainId}_${event.transaction.hash}`;
+    const sale = updatedDb.entities.Sale.get(saleId);
+    assert.ok(sale, "Sale should be created");
+
+    // Offer arrays lengths and content
+    assert.equal(sale.offerItemTypes.length, 2);
+    assert.deepEqual(sale.offerItemTypes, [2, 3]);
+    assert.equal(sale.offerTokens[0], NFT721);
+    assert.equal(sale.offerTokens[1], NFT1155);
+    assert.equal(sale.offerIdentifiers[0], "101");
+    assert.equal(sale.offerIdentifiers[1], "202");
+    assert.equal(sale.offerAmounts[0], "1");
+    assert.equal(sale.offerAmounts[1], "3");
+
+    // Junctions for both tokens
+    const saleNfts = updatedDb.entities.SaleNFT.getAll().filter((sn: any) => sn.sale_id === saleId);
+    assert.equal(saleNfts.length, 2, "Two NFT junctions expected");
+    const ids = saleNfts.map((sn: any) => sn.nftToken_id);
+    assert.ok(ids.includes(`${NFT721.toLowerCase()}:101`));
+    assert.ok(ids.includes(`${NFT1155.toLowerCase()}:202`));
+  });
+});
+
 describe("Seaport relationship integrity tests", () => {
   let mockDb: any;
 
@@ -455,5 +577,191 @@ describe("Seaport relationship integrity tests", () => {
     assert.ok(token1, "First NFT Token should exist");
     assert.ok(token2, "Second NFT Token should exist");
     // Note: With @derivedFrom relationships, sales are automatically linked
+  });
+
+  it("Merges multiple OrderFulfilled events in the same transaction", async () => {
+    const OFFERER = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const RECIPIENT = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    const NFT_CONTRACT_1 = "0x1111111111111111111111111111111111111111";
+    const NFT_CONTRACT_2 = "0x2222222222222222222222222222222222222222";
+    const SAME_TX_HASH = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
+    // First OrderFulfilled event
+    const event1 = Seaport.OrderFulfilled.createMockEvent({
+      orderHash: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      offerer: OFFERER,
+      zone: "0x0000000000000000000000000000000000000000",
+      recipient: RECIPIENT,
+      offer: [
+        [2n, NFT_CONTRACT_1, 100n, 1n] as [bigint, string, bigint, bigint], // ERC721 NFT
+      ],
+      consideration: [
+        [0n, "0x0000000000000000000000000000000000000000", 0n, 1000000000000000000n, OFFERER] as [
+          bigint,
+          string,
+          bigint,
+          bigint,
+          string,
+        ], // ETH payment
+      ],
+      mockEventData: {
+        block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
+        transaction: { hash: SAME_TX_HASH },
+        chainId: 1,
+        logIndex: 1,
+      },
+    });
+
+    // Second OrderFulfilled event in the same transaction
+    const event2 = Seaport.OrderFulfilled.createMockEvent({
+      orderHash: "0x2222222222222222222222222222222222222222222222222222222222222222",
+      offerer: OFFERER,
+      zone: "0x0000000000000000000000000000000000000000",
+      recipient: RECIPIENT,
+      offer: [
+        [2n, NFT_CONTRACT_2, 200n, 1n] as [bigint, string, bigint, bigint], // Another ERC721 NFT
+      ],
+      consideration: [
+        [0n, "0x0000000000000000000000000000000000000000", 0n, 2000000000000000000n, OFFERER] as [
+          bigint,
+          string,
+          bigint,
+          bigint,
+          string,
+        ], // More ETH payment
+      ],
+      mockEventData: {
+        block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
+        transaction: { hash: SAME_TX_HASH },
+        chainId: 1,
+        logIndex: 2,
+      },
+    });
+
+    let currentDb = mockDb;
+
+    // Process first event
+    currentDb = await Seaport.OrderFulfilled.processEvent({
+      event: event1,
+      mockDb: currentDb,
+    });
+
+    // Process second event (should merge with first)
+    currentDb = await Seaport.OrderFulfilled.processEvent({
+      event: event2,
+      mockDb: currentDb,
+    });
+
+    const saleId = `${event1.chainId}_${event1.transaction.hash}`;
+    const mergedSale = currentDb.entities.Sale.get(saleId);
+
+    // Verify the sale exists
+    assert.ok(mergedSale, "Merged sale should exist");
+
+    // Verify offer arrays contain data from both events
+    assert.equal(mergedSale.offerItemTypes.length, 2, "Should have 2 offer item types");
+    assert.equal(mergedSale.offerTokens.length, 2, "Should have 2 offer tokens");
+    assert.equal(mergedSale.offerIdentifiers.length, 2, "Should have 2 offer identifiers");
+    assert.equal(mergedSale.offerAmounts.length, 2, "Should have 2 offer amounts");
+
+    // Verify consideration arrays contain data from both events
+    assert.equal(
+      mergedSale.considerationItemTypes.length,
+      2,
+      "Should have 2 consideration item types"
+    );
+    assert.equal(mergedSale.considerationTokens.length, 2, "Should have 2 consideration tokens");
+    assert.equal(
+      mergedSale.considerationIdentifiers.length,
+      2,
+      "Should have 2 consideration identifiers"
+    );
+    assert.equal(mergedSale.considerationAmounts.length, 2, "Should have 2 consideration amounts");
+    assert.equal(
+      mergedSale.considerationRecipients.length,
+      2,
+      "Should have 2 consideration recipients"
+    );
+
+    // Verify first offer item (from event1)
+    assert.equal(mergedSale.offerItemTypes[0], 2, "First offer item type should be ERC721");
+    assert.equal(mergedSale.offerTokens[0], NFT_CONTRACT_1, "First offer token should match");
+    assert.equal(mergedSale.offerIdentifiers[0], "100", "First offer identifier should match");
+    assert.equal(mergedSale.offerAmounts[0], "1", "First offer amount should match");
+
+    // Verify second offer item (from event2)
+    assert.equal(mergedSale.offerItemTypes[1], 2, "Second offer item type should be ERC721");
+    assert.equal(mergedSale.offerTokens[1], NFT_CONTRACT_2, "Second offer token should match");
+    assert.equal(mergedSale.offerIdentifiers[1], "200", "Second offer identifier should match");
+    assert.equal(mergedSale.offerAmounts[1], "1", "Second offer amount should match");
+
+    // Verify first consideration item (from event1)
+    assert.equal(
+      mergedSale.considerationItemTypes[0],
+      0,
+      "First consideration item type should be ETH"
+    );
+    assert.equal(
+      mergedSale.considerationTokens[0],
+      "0x0000000000000000000000000000000000000000",
+      "First consideration token should be ETH"
+    );
+    assert.equal(
+      mergedSale.considerationIdentifiers[0],
+      "0",
+      "First consideration identifier should be 0"
+    );
+    assert.equal(
+      mergedSale.considerationAmounts[0],
+      "1000000000000000000",
+      "First consideration amount should match"
+    );
+    assert.equal(
+      mergedSale.considerationRecipients[0],
+      OFFERER,
+      "First consideration recipient should match"
+    );
+
+    // Verify second consideration item (from event2)
+    assert.equal(
+      mergedSale.considerationItemTypes[1],
+      0,
+      "Second consideration item type should be ETH"
+    );
+    assert.equal(
+      mergedSale.considerationTokens[1],
+      "0x0000000000000000000000000000000000000000",
+      "Second consideration token should be ETH"
+    );
+    assert.equal(
+      mergedSale.considerationIdentifiers[1],
+      "0",
+      "Second consideration identifier should be 0"
+    );
+    assert.equal(
+      mergedSale.considerationAmounts[1],
+      "2000000000000000000",
+      "Second consideration amount should match"
+    );
+    assert.equal(
+      mergedSale.considerationRecipients[1],
+      OFFERER,
+      "Second consideration recipient should match"
+    );
+
+    // Verify both NFTs are linked to the sale
+    const allSaleNfts = currentDb.entities.SaleNFT.getAll();
+    const saleNfts = allSaleNfts.filter((sn: any) => sn.sale_id === saleId);
+    assert.equal(saleNfts.length, 2, "Should have 2 NFT junctions");
+
+    const nftTokenIds = saleNfts.map((sn: any) => sn.nftToken_id);
+    assert.ok(
+      nftTokenIds.includes(`${NFT_CONTRACT_1.toLowerCase()}:100`),
+      "Should include first NFT token"
+    );
+    assert.ok(
+      nftTokenIds.includes(`${NFT_CONTRACT_2.toLowerCase()}:200`),
+      "Should include second NFT token"
+    );
   });
 });

@@ -41,6 +41,9 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
   const timestamp = BigInt(event.block.timestamp);
   const saleId = `${event.chainId}_${event.transaction.hash}`;
 
+  // Check if a Sale entity already exists for this transaction
+  let existingSale = await context.Sale.get(saleId);
+
   // Ensure Account entities exist
   await getOrCreateAccount(context, event.params.offerer);
   await getOrCreateAccount(context, event.params.recipient);
@@ -64,30 +67,56 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
     considerationIdentifiers
   );
 
-  // Create the main Sale entity
-  const saleEntity: Sale = {
-    id: saleId,
-    timestamp,
-    transactionHash: event.transaction.hash,
-    market: "Seaport",
+  let saleEntity: Sale;
 
-    // Account relationships (use _id fields to establish relationships)
-    offerer_id: event.params.offerer.toLowerCase(),
-    recipient_id: event.params.recipient.toLowerCase(),
+  if (existingSale) {
+    // Merge with existing sale data
+    saleEntity = {
+      ...existingSale,
+      // Merge offer arrays
+      offerItemTypes: [...existingSale.offerItemTypes, ...offerItemTypes],
+      offerTokens: [...existingSale.offerTokens, ...offerTokens],
+      offerIdentifiers: [...existingSale.offerIdentifiers, ...offerIdentifiers],
+      offerAmounts: [...existingSale.offerAmounts, ...offerAmounts],
+      // Merge consideration arrays
+      considerationItemTypes: [...existingSale.considerationItemTypes, ...considerationItemTypes],
+      considerationTokens: [...existingSale.considerationTokens, ...considerationTokens],
+      considerationIdentifiers: [
+        ...existingSale.considerationIdentifiers,
+        ...considerationIdentifiers,
+      ],
+      considerationAmounts: [...existingSale.considerationAmounts, ...considerationAmounts],
+      considerationRecipients: [
+        ...existingSale.considerationRecipients,
+        ...considerationRecipients,
+      ],
+    };
+  } else {
+    // Create new sale entity
+    saleEntity = {
+      id: saleId,
+      timestamp,
+      transactionHash: event.transaction.hash,
+      market: "Seaport",
 
-    // Inline offer arrays
-    offerItemTypes,
-    offerTokens,
-    offerIdentifiers,
-    offerAmounts,
+      // Account relationships (use _id fields to establish relationships)
+      offerer_id: event.params.offerer.toLowerCase(),
+      recipient_id: event.params.recipient.toLowerCase(),
 
-    // Inline consideration arrays
-    considerationItemTypes,
-    considerationTokens,
-    considerationIdentifiers,
-    considerationAmounts,
-    considerationRecipients,
-  };
+      // Inline offer arrays
+      offerItemTypes,
+      offerTokens,
+      offerIdentifiers,
+      offerAmounts,
+
+      // Inline consideration arrays
+      considerationItemTypes,
+      considerationTokens,
+      considerationIdentifiers,
+      considerationAmounts,
+      considerationRecipients,
+    };
+  }
 
   // Create SaleNFT junction entities for offer NFTs
   await createSaleNFTJunctions(context, saleId, offerNftItems, true);
@@ -99,11 +128,17 @@ Seaport.OrderFulfilled.handler(async ({ event, context }) => {
   context.Sale.set(saleEntity);
 
   // Account-level classification: buys, sells, swaps
+  // Use merged saleEntity arrays to determine presence of NFTs (ERC721=2, ERC1155=3)
+  const hasOfferNfts = saleEntity.offerItemTypes.some((type) => type === 2 || type === 3);
+  const hasConsiderationNfts = saleEntity.considerationItemTypes.some(
+    (type) => type === 2 || type === 3
+  );
+
   createAccountJunctionsForSale(context, {
     saleId,
     offererId: event.params.offerer.toLowerCase(),
     recipientId: event.params.recipient.toLowerCase(),
-    hasOfferNfts: offerNftItems.length > 0,
-    hasConsiderationNfts: considerationNftItems.length > 0,
+    hasOfferNfts,
+    hasConsiderationNfts,
   });
 });
