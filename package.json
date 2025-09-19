@@ -12,6 +12,7 @@
     "codegen": "envio codegen",
     "start": "podman-compose up -d",
     "stop": "podman-compose down",
+    "restart": "pnpm stop && pnpm start",
     "test": "pnpm mocha",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
