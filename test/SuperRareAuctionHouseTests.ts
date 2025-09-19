@@ -1,5 +1,5 @@
 import assert from "assert";
-import { TestHelpers, Sale, Account, NFTContract, NFTToken } from "generated";
+import { TestHelpers, Sale } from "generated";
 const { MockDb, SuperRareAuctionHouse } = TestHelpers;
 
 describe("SuperRareAuctionHouse AuctionSettled event tests", () => {

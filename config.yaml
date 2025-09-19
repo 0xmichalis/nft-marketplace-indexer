@@ -63,3 +63,10 @@ networks:
           # TODO: Support ReserveAuctionFinalized event. To do this effectively, we need to use the Effect API to call the Foundation contract's getReserveAuction function.
           #       Additionally, we need to inspect all implementations since the deployment of the proxy to ensure the function is available across implementations.
           # - event: ReserveAuctionFinalized(uint256 indexed auctionId, address indexed seller, address indexed bidder, uint256 f8nFee, uint256 creatorFee, uint256 ownerRev)
+
+      - name: CryptoPunks
+        address:
+          - "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB"
+        handler: src/CryptoPunksEventHandlers.ts
+        events:
+          - event: PunkBought(uint indexed tokenId, uint value, address indexed fromAddress, address indexed toAddress)

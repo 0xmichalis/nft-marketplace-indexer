@@ -1,5 +1,5 @@
 import assert from "assert";
-import { TestHelpers, Sale, Account, NFTContract, NFTToken } from "generated";
+import { TestHelpers } from "generated";
 const { MockDb, KnownOrigin } = TestHelpers;
 
 describe("KnownOrigin BuyNowPurchased event tests", () => {

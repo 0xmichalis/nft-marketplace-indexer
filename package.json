@@ -6,7 +6,7 @@
     "build": "tsc --build",
     "watch": "tsc --watch",
     "mocha": "ts-mocha test/**/*.ts",
-    "test:unit": "ts-mocha test/Test.ts",
+    "test:unit": "ts-mocha test/*Tests.ts",
     "test:queries": "ts-mocha test/QueryIntegration.ts",
     "test:queries:verbose": "DEBUG=graphql-request ts-mocha test/QueryIntegration.ts",
     "codegen": "envio codegen",
