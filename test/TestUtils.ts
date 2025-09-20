@@ -35,9 +35,9 @@ export const NFT_CONTRACTS = {
  */
 export const ITEM_TYPES = {
   NATIVE: 0, // ETH
-  ERC721: 1, // NFTs
-  ERC1155: 2, // Semi-fungible tokens
-  ERC20: 3, // Fungible tokens
+  ERC20: 1, // Fungible tokens
+  ERC721: 2, // NFTs
+  ERC1155: 3, // Semi-fungible tokens
 } as const;
 
 /**

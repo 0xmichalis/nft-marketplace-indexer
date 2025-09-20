@@ -51,7 +51,6 @@ type SaleNFT {
   id: ID! # saleId:nftTokenId
   sale: Sale!
   nftToken: NFTToken!
-  isOffer: Boolean! # true if this NFT was in the offer, false if in consideration
 }
 
 type AccountBuy {

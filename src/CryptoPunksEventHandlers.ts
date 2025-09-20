@@ -4,6 +4,8 @@ import {
   getOrCreateAccount,
   createSaleNFTJunctions,
   createAccountJunctionsForSale,
+  createAccountBuy,
+  createAccountSell,
 } from "./entities/EntityHelpers";
 
 CryptoPunks.PunkBought.handler(async ({ event, context }) => {
@@ -47,22 +49,14 @@ CryptoPunks.PunkBought.handler(async ({ event, context }) => {
   };
 
   // Create SaleNFT junction entities for the NFT in the offer
-  await createSaleNFTJunctions(
-    context,
-    saleId,
-    [{ contractAddress: nftContract, tokenId, itemType: 2 }],
-    true
-  );
+  await createSaleNFTJunctions(context, saleId, [
+    { contractAddress: nftContract, tokenId, itemType: 2 },
+  ]);
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
 
-  // Account-level classification: buyer and seller
-  createAccountJunctionsForSale(context, {
-    saleId,
-    offererId: fromAddress.toLowerCase(),
-    recipientId: toAddress.toLowerCase(),
-    hasOfferNfts: true, // NFT is in the offer (seller gives NFT)
-    hasConsiderationNfts: false, // No NFTs in consideration
-  });
+  // Account-level sale classification
+  createAccountSell(context, saleEntity.offerer_id, saleId);
+  createAccountBuy(context, saleEntity.recipient_id, saleId);
 });

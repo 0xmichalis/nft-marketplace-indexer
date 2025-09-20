@@ -66,7 +66,6 @@ describe("CryptoPunks PunkBought event tests", () => {
     const saleNfts = allSaleNfts.filter((sn: any) => sn.sale_id === saleId);
     assert.equal(saleNfts.length, 1, "Sale should have one NFT");
     assert.equal(saleNfts[0].nftToken_id, `${CRYPTOPUNKS_CONTRACT.toLowerCase()}:123`);
-    assert.equal(saleNfts[0].isOffer, true, "NFT should be in offer");
 
     // Assertions for offer items (NFT being sold)
     assert.equal(actualSale.offerItemTypes.length, 1);

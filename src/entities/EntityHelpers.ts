@@ -9,12 +9,16 @@ import {
   AccountBuy,
   AccountSell,
   AccountSwap,
+  HandlerContext,
 } from "generated";
 
 /**
  * Get or create an Account entity
  */
-export async function getOrCreateAccount(context: any, address: string): Promise<Account> {
+export async function getOrCreateAccount(
+  context: HandlerContext,
+  address: string
+): Promise<Account> {
   const accountId = address.toLowerCase();
   let account = await context.Account.get(accountId);
 
@@ -33,7 +37,7 @@ export async function getOrCreateAccount(context: any, address: string): Promise
  * Get or create an NFTContract entity
  */
 export async function getOrCreateNFTContract(
-  context: any,
+  context: HandlerContext,
   contractAddress: string
 ): Promise<NFTContract> {
   const contractId = contractAddress.toLowerCase();
@@ -54,7 +58,7 @@ export async function getOrCreateNFTContract(
  * Get or create an NFTToken entity
  */
 export async function getOrCreateNFTToken(
-  context: any,
+  context: HandlerContext,
   contractAddress: string,
   tokenId: string
 ): Promise<NFTToken> {
@@ -75,9 +79,9 @@ export async function getOrCreateNFTToken(
 }
 
 /**
- * Extract all NFT contract and token IDs from offer/consideration arrays
+ * Get all NFT contract and token IDs from offer/consideration arrays
  */
-export function extractNFTIds(
+export function getNFTItems(
   offerItemTypes: number[],
   offerTokens: string[],
   offerIdentifiers: string[],
@@ -85,13 +89,15 @@ export function extractNFTIds(
   considerationTokens: string[],
   considerationIdentifiers: string[]
 ): {
-  contractIds: string[];
-  tokenIds: string[];
-  nftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }>;
+  offerNftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }>;
+  considerationNftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }>;
 } {
-  const contractIds = new Set<string>();
-  const tokenIds = new Set<string>();
-  const nftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }> = [];
+  const offerNftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }> = [];
+  const considerationNftItems: Array<{
+    contractAddress: string;
+    tokenId: string;
+    itemType: number;
+  }> = [];
 
   // Process offer items
   for (let i = 0; i < offerItemTypes.length; i++) {
@@ -102,9 +108,7 @@ export function extractNFTIds(
       const contractAddress = offerTokens[i].toLowerCase();
       const tokenId = offerIdentifiers[i];
 
-      contractIds.add(contractAddress);
-      tokenIds.add(`${contractAddress}:${tokenId}`);
-      nftItems.push({ contractAddress, tokenId, itemType });
+      offerNftItems.push({ contractAddress, tokenId, itemType });
     }
   }
 
@@ -117,16 +121,13 @@ export function extractNFTIds(
       const contractAddress = considerationTokens[i].toLowerCase();
       const tokenId = considerationIdentifiers[i];
 
-      contractIds.add(contractAddress);
-      tokenIds.add(`${contractAddress}:${tokenId}`);
-      nftItems.push({ contractAddress, tokenId, itemType });
+      considerationNftItems.push({ contractAddress, tokenId, itemType });
     }
   }
 
   return {
-    contractIds: Array.from(contractIds),
-    tokenIds: Array.from(tokenIds),
-    nftItems,
+    offerNftItems,
+    considerationNftItems,
   };
 }
 
@@ -134,10 +135,9 @@ export function extractNFTIds(
  * Create SaleNFT junction entities for a sale
  */
 export async function createSaleNFTJunctions(
-  context: any,
+  context: HandlerContext,
   saleId: string,
-  nftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }>,
-  isOffer: boolean
+  nftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }>
 ): Promise<void> {
   for (const nftItem of nftItems) {
     const { contractAddress, tokenId } = nftItem;
@@ -152,7 +152,6 @@ export async function createSaleNFTJunctions(
       id: saleNftId,
       sale_id: saleId,
       nftToken_id: nftToken.id,
-      isOffer: isOffer,
     };
 
     context.SaleNFT.set(saleNft);
@@ -162,7 +161,7 @@ export async function createSaleNFTJunctions(
 /**
  * Create an AccountBuy junction for a given account and sale
  */
-export function createAccountBuy(context: any, accountId: string, saleId: string): void {
+export function createAccountBuy(context: HandlerContext, accountId: string, saleId: string): void {
   const buy: AccountBuy = {
     id: `${accountId}:${saleId}`,
     account_id: accountId,
@@ -174,7 +173,11 @@ export function createAccountBuy(context: any, accountId: string, saleId: string
 /**
  * Create an AccountSell junction for a given account and sale
  */
-export function createAccountSell(context: any, accountId: string, saleId: string): void {
+export function createAccountSell(
+  context: HandlerContext,
+  accountId: string,
+  saleId: string
+): void {
   const sell: AccountSell = {
     id: `${accountId}:${saleId}`,
     account_id: accountId,
@@ -186,7 +189,11 @@ export function createAccountSell(context: any, accountId: string, saleId: strin
 /**
  * Create an AccountSwap junction for a given account and sale
  */
-export function createAccountSwap(context: any, accountId: string, saleId: string): void {
+export function createAccountSwap(
+  context: HandlerContext,
+  accountId: string,
+  saleId: string
+): void {
   const swap: AccountSwap = {
     id: `${accountId}:${saleId}`,
     account_id: accountId,
@@ -196,38 +203,45 @@ export function createAccountSwap(context: any, accountId: string, saleId: strin
 }
 
 /**
- * Classify a sale into account-level buy/sell/swap junctions
- * based on where NFTs appear (offer vs consideration) and the primary
- * participants (offerer, recipient).
+ * Classify a sale into account-level buy/sell/swap junctions based on:
+ * 1. Payment presence determines sale vs swap
+ * 2. Payment flow determines buyer/seller roles (who offers vs receives payments)
+ * 3. Focus on main counterparties (offerer/recipient), not fee recipients
+ *
+ * Logic:
+ * - No payments = Swap
+ * - Payments in consideration = Offerer sells, recipient buys
+ * - Payments in offer = Offerer buys, recipient sells
  */
 export function createAccountJunctionsForSale(
-  context: any,
+  context: HandlerContext,
   params: {
     saleId: string;
     offererId: string;
     recipientId: string;
-    hasOfferNfts: boolean;
-    hasConsiderationNfts: boolean;
+    offerItemTypes: number[];
+    considerationItemTypes: number[];
   }
 ): void {
-  const { saleId, offererId, recipientId, hasOfferNfts, hasConsiderationNfts } = params;
+  const { saleId, offererId, recipientId, offerItemTypes, considerationItemTypes } = params;
 
-  if (hasOfferNfts && hasConsiderationNfts) {
-    // Swap for both parties
+  // Check for payments (ETH = 0, ERC20 = 1)
+  const hasOfferPayments = offerItemTypes.some((type) => type === 0 || type === 1);
+  const hasConsiderationPayments = considerationItemTypes.some((type) => type === 0 || type === 1);
+  const hasPayments = hasOfferPayments || hasConsiderationPayments;
+
+  // If no payments involved, classify as swap
+  if (!hasPayments) {
     createAccountSwap(context, offererId, saleId);
     createAccountSwap(context, recipientId, saleId);
     return;
   }
 
-  if (hasOfferNfts) {
-    // NFTs in offer: offerer sells, recipient buys
+  // If the consideration has payments, the recipient is buying from the offerer
+  if (hasConsiderationPayments) {
     createAccountSell(context, offererId, saleId);
     createAccountBuy(context, recipientId, saleId);
-    return;
-  }
-
-  if (hasConsiderationNfts) {
-    // NFTs in consideration: offerer buys, recipient sells (best-effort)
+  } else {
     createAccountBuy(context, offererId, saleId);
     createAccountSell(context, recipientId, saleId);
   }

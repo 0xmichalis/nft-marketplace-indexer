@@ -55,6 +55,15 @@ describe("Foundation event tests", () => {
         `${NFT_CONTRACT.toLowerCase()}:456`
       );
 
+      // Verify account junctions were created
+      const saleId = `${event.chainId}_${event.transaction.hash}`;
+      const buyerBuyJunction = mockDbUpdated.entities.AccountBuy.get(
+        `${BUYER_ADDRESS.toLowerCase()}:${saleId}`
+      );
+      const sellerSellJunction = mockDbUpdated.entities.AccountSell.get(
+        `${SELLER_ADDRESS.toLowerCase()}:${saleId}`
+      );
+
       // Assertions for the Sale entity
       assert(actualSale, "Sale should be created");
       assert.equal(actualSale.id, `${event.chainId}_${event.transaction.hash}`);
@@ -69,7 +78,6 @@ describe("Foundation event tests", () => {
       const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
       assert.equal(saleNfts.length, 1, "Sale should have one NFT");
       assert.equal(saleNfts[0].nftToken_id, `${NFT_CONTRACT.toLowerCase()}:456`);
-      assert.equal(saleNfts[0].isOffer, true, "NFT should be in offer");
 
       // Assertions for offer items (NFT being sold)
       assert.equal(actualSale.offerItemTypes.length, 1);
@@ -116,6 +124,168 @@ describe("Foundation event tests", () => {
       assert.equal(actualNFTToken.id, `${NFT_CONTRACT.toLowerCase()}:456`);
       assert.equal(actualNFTToken.contract_id, NFT_CONTRACT.toLowerCase());
       assert.equal(actualNFTToken.tokenId, "456");
+
+      // Verify account junctions
+      assert(buyerBuyJunction, "Buyer should have a buy junction");
+      assert.equal(buyerBuyJunction.account_id, BUYER_ADDRESS.toLowerCase());
+      assert.equal(buyerBuyJunction.sale_id, saleId);
+
+      assert(sellerSellJunction, "Seller should have a sell junction");
+      assert.equal(sellerSellJunction.account_id, SELLER_ADDRESS.toLowerCase());
+      assert.equal(sellerSellJunction.sale_id, saleId);
+    });
+
+    it("Handles different token IDs correctly", async () => {
+      const event = Foundation.BuyPriceAccepted.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 999999n, // Large token ID
+        seller: SELLER_ADDRESS,
+        buyer: BUYER_ADDRESS,
+        totalFees: 2000000000000000000n, // 2 ETH
+        creatorRev: 50000000000000000n, // 0.05 ETH
+        sellerRev: 1950000000000000000n, // 1.95 ETH
+        mockEventData: {
+          block: { number: 18500001, timestamp: 1700000001 },
+          transaction: { hash: "0xtxhash2" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const mockDbUpdated = await Foundation.BuyPriceAccepted.processEvent({
+        event,
+        mockDb: MockDb.createMockDb(),
+      });
+
+      const actualSale = mockDbUpdated.entities.Sale.get(
+        `${event.chainId}_${event.transaction.hash}`
+      );
+      assert(actualSale, "Sale should be created");
+      assert.equal(actualSale.offerIdentifiers[0], "999999");
+
+      const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
+        `${NFT_CONTRACT.toLowerCase()}:999999`
+      );
+      assert(actualNFTToken, "NFT token should be created");
+      assert.equal(actualNFTToken.tokenId, "999999");
+    });
+
+    it("Handles zero creator fee correctly", async () => {
+      const event = Foundation.BuyPriceAccepted.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 123n,
+        seller: SELLER_ADDRESS,
+        buyer: BUYER_ADDRESS,
+        totalFees: 1000000000000000000n, // 1 ETH
+        creatorRev: 0n, // No creator fee
+        sellerRev: 1000000000000000000n, // Full amount to seller
+        mockEventData: {
+          block: { number: 18500002, timestamp: 1700000002 },
+          transaction: { hash: "0xtxhash3" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const mockDbUpdated = await Foundation.BuyPriceAccepted.processEvent({
+        event,
+        mockDb: MockDb.createMockDb(),
+      });
+
+      const actualSale = mockDbUpdated.entities.Sale.get(
+        `${event.chainId}_${event.transaction.hash}`
+      );
+      assert(actualSale, "Sale should be created");
+      assert.equal(actualSale.considerationAmounts[0], "1000000000000000000"); // seller amount
+      assert.equal(actualSale.considerationAmounts[1], "0"); // creator amount
+    });
+
+    it("Creates separate account junctions for different sales", async () => {
+      const testDb = MockDb.createMockDb();
+
+      // First sale
+      const event1 = Foundation.BuyPriceAccepted.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 100n,
+        seller: SELLER_ADDRESS,
+        buyer: BUYER_ADDRESS,
+        totalFees: 1000000000000000000n,
+        creatorRev: 25000000000000000n,
+        sellerRev: 975000000000000000n,
+        mockEventData: {
+          block: { number: 18500003, timestamp: 1700000003 },
+          transaction: { hash: "0xtxhash4" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      // Second sale - different buyer
+      const BUYER2_ADDRESS = "0xdddddddddddddddddddddddddddddddddddddddd";
+      const event2 = Foundation.BuyPriceAccepted.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 200n,
+        seller: SELLER_ADDRESS,
+        buyer: BUYER2_ADDRESS,
+        totalFees: 2000000000000000000n,
+        creatorRev: 50000000000000000n,
+        sellerRev: 1950000000000000000n,
+        mockEventData: {
+          block: { number: 18500004, timestamp: 1700000004 },
+          transaction: { hash: "0xtxhash5" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      // Process both events
+      const dbAfterFirst = await Foundation.BuyPriceAccepted.processEvent({
+        event: event1,
+        mockDb: testDb,
+      });
+
+      const dbAfterSecond = await Foundation.BuyPriceAccepted.processEvent({
+        event: event2,
+        mockDb: dbAfterFirst,
+      });
+
+      // Verify both sales exist
+      const sale1 = dbAfterSecond.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}`);
+      const sale2 = dbAfterSecond.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}`);
+      assert(sale1, "First sale should exist");
+      assert(sale2, "Second sale should exist");
+
+      // Verify account junctions for first sale
+      const buyer1BuyJunction = dbAfterSecond.entities.AccountBuy.get(
+        `${BUYER_ADDRESS.toLowerCase()}:1_${event1.transaction.hash}`
+      );
+      const seller1SellJunction = dbAfterSecond.entities.AccountSell.get(
+        `${SELLER_ADDRESS.toLowerCase()}:1_${event1.transaction.hash}`
+      );
+
+      // Verify account junctions for second sale
+      const buyer2BuyJunction = dbAfterSecond.entities.AccountBuy.get(
+        `${BUYER2_ADDRESS.toLowerCase()}:1_${event2.transaction.hash}`
+      );
+      const seller2SellJunction = dbAfterSecond.entities.AccountSell.get(
+        `${SELLER_ADDRESS.toLowerCase()}:1_${event2.transaction.hash}`
+      );
+
+      assert(buyer1BuyJunction, "Buyer 1 should have buy junction for sale 1");
+      assert(seller1SellJunction, "Seller should have sell junction for sale 1");
+      assert(buyer2BuyJunction, "Buyer 2 should have buy junction for sale 2");
+      assert(seller2SellJunction, "Seller should have sell junction for sale 2");
+
+      // Verify seller has 2 sell junctions (one for each sale)
+      const allSellJunctions = dbAfterSecond.entities.AccountSell.getAll();
+      const sellerSellJunctions = allSellJunctions.filter(
+        (junction) => junction.account_id === SELLER_ADDRESS.toLowerCase()
+      );
+      assert.equal(sellerSellJunctions.length, 2, "Seller should have 2 sell junctions");
     });
   });
 });

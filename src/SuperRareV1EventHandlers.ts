@@ -2,7 +2,7 @@ import { SuperRareV1, Sale } from "generated";
 
 import {
   getOrCreateAccount,
-  extractNFTIds,
+  getNFTItems,
   createSaleNFTJunctions,
   createAccountBuy,
   createAccountSell,
@@ -19,7 +19,7 @@ SuperRareV1.Sold.handler(async ({ event, context }) => {
   await getOrCreateAccount(context, event.params.buyer);
 
   // Extract NFT IDs from the sale
-  const { nftItems: offerNftItems } = extractNFTIds(
+  const { offerNftItems } = getNFTItems(
     [2], // ERC721
     [event.srcAddress], // SuperRare contract address
     [tokenId],
@@ -54,14 +54,12 @@ SuperRareV1.Sold.handler(async ({ event, context }) => {
   };
 
   // Create SaleNFT junction entities for offer NFTs
-  await createSaleNFTJunctions(context, saleId, offerNftItems, true);
+  await createSaleNFTJunctions(context, saleId, offerNftItems);
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
 
-  // Account-level classification
-  const sellerId = event.params.seller.toLowerCase();
-  const buyerId = event.params.buyer.toLowerCase();
-  createAccountSell(context, sellerId, saleId);
-  createAccountBuy(context, buyerId, saleId);
+  // Account-level sale classification
+  createAccountSell(context, saleEntity.offerer_id, saleId);
+  createAccountBuy(context, saleEntity.recipient_id, saleId);
 });

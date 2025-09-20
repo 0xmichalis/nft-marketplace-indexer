@@ -67,7 +67,6 @@ describe("KnownOrigin BuyNowPurchased event tests", () => {
     const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale.id);
     assert.equal(saleNfts.length, 1);
     assert.equal(saleNfts[0].nftToken_id, `${KNOWNORIGIN_CONTRACT.toLowerCase()}:123`);
-    assert.equal(saleNfts[0].isOffer, true);
 
     // Assertions for offer items (NFT being sold)
     assert.equal(actualSale.offerItemTypes.length, 1);

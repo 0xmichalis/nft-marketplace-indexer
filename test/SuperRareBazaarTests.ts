@@ -101,7 +101,6 @@ describe("SuperRareBazaar AcceptOffer event tests", () => {
     const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
     assert.equal(saleNfts.length, 1, "Sale should have one NFT");
     assert.equal(saleNfts[0].nftToken_id, `${NFT_CONTRACT.toLowerCase()}:123`);
-    assert.equal(saleNfts[0].isOffer, true, "NFT should be in offer");
 
     // Note: With @derivedFrom relationships, sales are automatically linked
     // The relationships are computed at query time, not stored directly in the entity

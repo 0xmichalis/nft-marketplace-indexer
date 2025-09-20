@@ -2,7 +2,7 @@ import { KnownOrigin, Sale } from "generated";
 
 import {
   getOrCreateAccount,
-  extractNFTIds,
+  getNFTItems,
   createSaleNFTJunctions,
   createAccountBuy,
   createAccountSell,
@@ -20,7 +20,7 @@ KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
 
   // Extract NFT IDs from the sale
   // For KnownOrigin, the NFT is from the KnownOrigin contract itself
-  const { nftItems: offerNftItems } = extractNFTIds(
+  const { offerNftItems } = getNFTItems(
     [2], // ERC721
     [event.srcAddress], // KnownOrigin contract address
     [tokenId],
@@ -55,14 +55,12 @@ KnownOrigin.BuyNowPurchased.handler(async ({ event, context }) => {
   };
 
   // Create SaleNFT junction entities for offer NFTs
-  await createSaleNFTJunctions(context, saleId, offerNftItems, true);
+  await createSaleNFTJunctions(context, saleId, offerNftItems);
 
   // Save the Sale entity
   context.Sale.set(saleEntity);
 
-  // Account-level classification: seller sells, buyer buys
-  const sellerId = event.params.currentOwner.toLowerCase();
-  const buyerId = event.params.buyer.toLowerCase();
-  createAccountSell(context, sellerId, saleId);
-  createAccountBuy(context, buyerId, saleId);
+  // Account-level sale classification
+  createAccountSell(context, saleEntity.offerer_id, saleId);
+  createAccountBuy(context, saleEntity.recipient_id, saleId);
 });
