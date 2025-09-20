@@ -1,4 +1,5 @@
 import { TestHelpers } from "generated";
+import { decodeEventLog, parseAbi } from "viem";
 
 const { Seaport } = TestHelpers;
 
@@ -575,4 +576,101 @@ export function assertSuperRareSalesEqual(actual: any, expected: any, message?: 
   });
 
   assert.deepEqual(normalize(actual), normalize(expected), message);
+}
+
+// Seaport OrderFulfilled event ABI
+const SEAPORT_ABI = parseAbi([
+  "event OrderFulfilled(bytes32 orderHash, address indexed offerer, address indexed zone, address recipient, (uint8 itemType, address token, uint256 identifier, uint256 amount)[] offer, (uint8 itemType, address token, uint256 identifier, uint256 amount, address recipient)[] consideration)",
+]);
+
+/**
+ * Decode raw event data into a mock event for testing
+ */
+export function decodeRawOrderFulfilledEvent(rawEventData: {
+  topics: string[];
+  data: string;
+  blockNumber: number;
+  timestamp: number;
+  transactionHash: string;
+  logIndex: number;
+  chainId: number;
+}) {
+  const { topics, data, blockNumber, timestamp, transactionHash, logIndex, chainId } = rawEventData;
+
+  try {
+    const decoded = decodeEventLog({
+      abi: SEAPORT_ABI,
+      data: data as `0x${string}`,
+      topics: topics as [`0x${string}`, ...`0x${string}`[]],
+      eventName: "OrderFulfilled",
+    });
+
+    // Extract the decoded parameters
+    const { orderHash, offerer, zone, recipient, offer, consideration } = decoded.args;
+
+    // Convert the decoded data to the format expected by the mock event
+    const formattedOffer = offer.map(
+      (item: any) =>
+        [BigInt(item.itemType), item.token, BigInt(item.identifier), BigInt(item.amount)] as [
+          bigint,
+          string,
+          bigint,
+          bigint,
+        ]
+    );
+
+    const formattedConsideration = consideration.map(
+      (item: any) =>
+        [
+          BigInt(item.itemType),
+          item.token,
+          BigInt(item.identifier),
+          BigInt(item.amount),
+          item.recipient,
+        ] as [bigint, string, bigint, bigint, string]
+    );
+
+    return Seaport.OrderFulfilled.createMockEvent({
+      orderHash,
+      offerer,
+      zone,
+      recipient,
+      offer: formattedOffer,
+      consideration: formattedConsideration,
+      mockEventData: {
+        block: {
+          number: blockNumber,
+          timestamp,
+          hash: `0xblock${blockNumber}`,
+        },
+        transaction: {
+          hash: transactionHash,
+        },
+        chainId,
+        logIndex,
+      },
+    });
+  } catch (error) {
+    throw new Error(
+      `Failed to decode OrderFulfilled event: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}
+
+export function processOrderFulfilledEventTest(
+  rawEventData: Parameters<typeof decodeRawOrderFulfilledEvent>[0],
+  testName: string,
+  assertions: (event: any, mockDb: any) => void
+) {
+  return async () => {
+    const mockDb = TestHelpers.MockDb.createMockDb();
+    const event = decodeRawOrderFulfilledEvent(rawEventData);
+
+    const updatedDb = await Seaport.OrderFulfilled.processEvent({
+      event,
+      mockDb,
+    });
+
+    assertions(event, updatedDb);
+  };
 }
