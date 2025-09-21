@@ -1,6 +1,71 @@
 services:
+  db:
+    image: docker.io/library/postgres:16
+    container_name: db
+    restart: unless-stopped
+    networks:
+      - indexer-network
+    env_file:
+      - .env.postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # The Postgres flags below are used to improve performance.
+      # On the host, you can run the following additional tweaks:
+      # sudo sysctl -w vm.swappiness=1
+      # sudo sysctl -w vm.dirty_background_ratio=5
+      # sudo sysctl -w vm.dirty_ratio=10
+    command:
+      - postgres
+      - -c
+      - shared_buffers=8GB
+      - -c
+      - effective_cache_size=32GB
+      - -c
+      - work_mem=32MB
+      - -c
+      - maintenance_work_mem=2GB
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - wal_level=replica
+      - -c
+      - wal_compression=on
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=on
+      - -c
+      - wal_buffers=-1
+      - -c
+      - wal_writer_delay=10ms
+      - -c
+      - wal_writer_flush_after=2MB
+      - -c
+      - max_wal_size=16GB
+      - -c
+      - min_wal_size=4GB
+      - -c
+      - checkpoint_timeout=15min
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - checkpoint_flush_after=2MB
+      - -c
+      - bgwriter_lru_maxpages=1000
+      - -c
+      - bgwriter_lru_multiplier=4.0
+      - -c
+      - bgwriter_flush_after=2MB
+      - -c
+      - max_connections=200
+
   graphql-engine:
     image: docker.io/hasura/graphql-engine:v2.43.0
+    container_name: graphql-engine
+    networks:
+      - indexer-network
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -17,10 +82,12 @@ services:
       HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "true"
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: public
       PORT: 8080
-    networks:
-      - indexer-network
+
   indexer:
     image: ghcr.io/0xmichalis/nft-marketplace-indexer:latest
+    container_name: indexer
+    networks:
+      - indexer-network
     pull_policy: always
     ports:
       - "127.0.0.1:9898:9898"
@@ -32,6 +99,7 @@ services:
     environment:
       CONFIG_FILE: config.yaml
       ENVIO_PG_DATABASE: enviodb
+      ENVIO_PG_HOST: 0.0.0.0
       ENVIO_PG_PORT: 5432
       ENVIO_PG_PUBLIC_SCHEMA: public
       ENVIO_PG_SSL_MODE: "false"
@@ -49,7 +117,9 @@ services:
       LOG_LEVEL: trace
       LOG_STRATEGY: console-pretty
       TUI_OFF: "true"
-    networks:
-      - indexer-network
+
+volumes:
+  pgdata:
+
 networks:
   indexer-network:

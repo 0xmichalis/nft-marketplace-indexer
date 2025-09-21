@@ -125,7 +125,7 @@ query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
 
 ### Generate files from `config.yaml` or `schema.graphql`
 
-```bash
+```sh
 pnpm codegen
 ```
 
@@ -133,7 +133,7 @@ pnpm codegen
 
 A Graph URL (`GRAPH_API_URL`) needs to be provided in order to run test queries against a deployed Graph. If not provided, the query tests will be skipped.
 
-```bash
+```sh
 # Run all tests
 pnpm test
 
@@ -146,9 +146,17 @@ pnpm test:unit
 
 ## Deployment
 
-The following command will run the indexer and Hasura. It assumes a Postgres database runs at `0.0.0.0:5432` (or whatever is the host that has been configured in `.env.hasura` and `.env.indexer`). You have to create the `enviouser` user and `enviodb` database with `enviouser` as the owner manually beforehand.
+Copy the following `.env.*.example` files to `.env.*` and update as you see fit:
 
-```bash
+```sh
+cp .env.postgres.example .env.postgres
+cp .env.hasura.example .env.hasura
+cp .env.indexer.example .env.indexer
+```
+
+Then you should be able to start a local deployment with:
+
+```sh
 pnpm start
 ```
 
@@ -158,7 +166,7 @@ Visit http://localhost:8080 and navigate to `Data` and click to track all databa
 
 Stop both the indexer and Hasura.
 
-```
+```sh
 pnpm stop
 ```
 
@@ -166,6 +174,6 @@ If there are schema changes, drop all tables from the database across both schem
 
 Restart the services and track the tables in Hasura.
 
-```
+```sh
 pnpm start
 ```
