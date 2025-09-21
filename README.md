@@ -174,5 +174,5 @@ pnpm restart:clean
 If there is no re-indexing to be done, you can simply restart with:
 
 ```sh
-pnpm restart`
+pnpm restart
 ```
