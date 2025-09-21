@@ -13,6 +13,7 @@
     "start": "podman-compose up -d",
     "stop": "podman-compose down",
     "restart": "pnpm stop && pnpm start",
+    "restart:clean": "pnpm stop -v && pnpm start",
     "test": "pnpm mocha",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

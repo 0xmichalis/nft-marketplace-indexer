@@ -164,16 +164,15 @@ Visit http://localhost:8080 and navigate to `Data` and click to track all databa
 
 ### Upgrades
 
-Stop both the indexer and Hasura.
+If there are schema updates, currently the simplest approach is to restart with a clean slate.
+TODO: Use [`envio local db-migrate up`](https://docs.envio.dev/docs/HyperIndex/cli-commands#envio-local-db-migrate-up) instead.
 
 ```sh
-pnpm stop
+pnpm restart:clean
 ```
 
-If there are schema changes, drop all tables from the database across both schemas (the indexer is using a different schema from Hasura). TODO: Use [`envio local db-migrate up`](https://docs.envio.dev/docs/HyperIndex/cli-commands#envio-local-db-migrate-up) instead.
-
-Restart the services and track the tables in Hasura.
+If there is no re-indexing to be done, you can simply restart with:
 
 ```sh
-pnpm start
+pnpm restart`
 ```
