@@ -8,7 +8,7 @@ Indexer for various NFT marketplaces on Ethereum (Seaport, SuperRare, KnownOrigi
 
 - [Node.js (use v18 or newer)](https://nodejs.org/en/download/current)
 - [pnpm (use v9 or newer)](https://pnpm.io/installation)
-- [Podman](https://podman.io/) (for deployments)
+- [Podman](https://podman.io/) (for deployments—this is a drop-in replacement for Docker so Docker should also work fine but you have to run the docker compose commands on your own instead of the documented `pnpm` commands in the `Deployment` and `Upgrades` sections)
 
 ## Example queries
 
