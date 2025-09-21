@@ -1,4 +1,5 @@
 import assert from "assert";
+
 import { TestHelpers, Sale } from "generated";
 const { MockDb, SuperRareV1 } = TestHelpers;
 
@@ -304,7 +305,6 @@ describe("SuperRareV1 Sold event tests", () => {
       const token = currentDb.entities.NFTToken.get(
         `${SUPER_RARE_CONTRACT.toLowerCase()}:${tokenId}`
       );
-      const saleId = `${events[i].chainId}_${events[i].transaction.hash}`;
 
       assert.ok(token, `Token ${tokenId} should exist`);
       // Note: With @derivedFrom relationships, sales are automatically linked

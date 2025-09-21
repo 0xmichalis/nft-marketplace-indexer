@@ -1,5 +1,7 @@
 import assert from "assert";
-import { TestHelpers, Sale } from "generated";
+
+import { TestHelpers } from "generated";
+
 import {
   decodeRawOrderFulfilledEvent,
   processEvents,
@@ -9,9 +11,6 @@ import {
   ITEM_TYPES,
 } from "./TestUtils";
 const { MockDb, Seaport } = TestHelpers;
-
-const NFT_CONTRACT_LOWER = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const NFT_CONTRACT_UPPER = NFT_CONTRACT_LOWER.toUpperCase();
 
 describe("Seaport contract OrderFulfilled event tests", () => {
   // Create mock db
@@ -360,92 +359,6 @@ describe("Seaport ERC1155 tests", () => {
   });
 });
 
-// Helper function to validate merged sale based on offerer
-function validateMergedSale(sale: Sale, isExpectedOfferer: boolean) {
-  const NFT_CONTRACT = "0xDa6558fA1c2452938168EF79DfD29c45Aba8a32B";
-  const OTHER_NFT_CONTRACT = "0x4440732B0D85e2a77DCb2CAEDfd940154241249a";
-  const WETH_CONTRACT = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-  if (isExpectedOfferer) {
-    // offerer.eth is the offerer: offers NFT45, receives NFT55 + 4 WETH + NFT45
-    assert.equal(sale?.offerItemTypes.length, 1, "Should have 1 offer item (NFT45)");
-    assert.equal(sale?.offerItemTypes[0], 2, "Offer should be ERC721");
-    assert.equal(
-      sale?.offerTokens[0].toLowerCase(),
-      OTHER_NFT_CONTRACT.toLowerCase(),
-      "Offer token should be OTHER_NFT_CONTRACT"
-    );
-    assert.equal(sale?.offerIdentifiers[0], "45", "Offer identifier should be 45");
-    assert.equal(sale?.offerAmounts[0], "1", "Offer amount should be 1");
-
-    assert.equal(
-      sale?.considerationItemTypes.length,
-      2,
-      "Should have 2 consideration items (NFT55 + 4 WETH)"
-    );
-
-    // Check for NFT55
-    const nft55Index = sale?.considerationIdentifiers.findIndex((id: string) => id === "55");
-    assert.ok(nft55Index !== -1, "Should contain NFT55");
-    assert.equal(
-      sale?.considerationTokens[nft55Index!].toLowerCase(),
-      NFT_CONTRACT.toLowerCase(),
-      "NFT55 should be from correct contract"
-    );
-    assert.equal(sale?.considerationAmounts[nft55Index!], "1", "NFT55 amount should be 1");
-
-    // Check for WETH
-    const wethIndex = sale?.considerationTokens.findIndex(
-      (token: string) => token.toLowerCase() === WETH_CONTRACT.toLowerCase()
-    );
-    assert.ok(wethIndex !== -1, "Should contain WETH");
-    assert.equal(sale?.considerationItemTypes[wethIndex!], 1, "WETH should be ERC20");
-    assert.equal(
-      sale?.considerationAmounts[wethIndex!],
-      "4000000000000000000",
-      "WETH amount should be 4 WETH"
-    );
-  } else {
-    // Other address is the offerer: offers 4 WETH + NFT55, receives NFT45
-    assert.equal(sale?.offerItemTypes.length, 2, "Should have 2 offer items (4 WETH + NFT55)");
-
-    // Check for WETH in offers
-    const wethOfferIndex = sale?.offerTokens.findIndex(
-      (token: string) => token.toLowerCase() === WETH_CONTRACT.toLowerCase()
-    );
-    assert.ok(wethOfferIndex !== -1, "Should contain WETH in offers");
-    assert.equal(sale?.offerItemTypes[wethOfferIndex!], 1, "WETH should be ERC20");
-    assert.equal(
-      sale?.offerAmounts[wethOfferIndex!],
-      "4000000000000000000",
-      "WETH amount should be 4 WETH"
-    );
-
-    // Check for NFT55 in offers
-    const nft55OfferIndex = sale?.offerIdentifiers.findIndex((id: string) => id === "55");
-    assert.ok(nft55OfferIndex !== -1, "Should contain NFT55 in offers");
-    assert.equal(
-      sale?.offerTokens[nft55OfferIndex!].toLowerCase(),
-      NFT_CONTRACT.toLowerCase(),
-      "NFT55 should be from correct contract"
-    );
-    assert.equal(sale?.offerAmounts[nft55OfferIndex!], "1", "NFT55 amount should be 1");
-
-    assert.equal(
-      sale?.considerationItemTypes.length,
-      1,
-      "Should have 1 consideration item (NFT45)"
-    );
-    assert.equal(sale?.considerationItemTypes[0], 2, "Consideration should be ERC721");
-    assert.equal(
-      sale?.considerationTokens[0].toLowerCase(),
-      OTHER_NFT_CONTRACT.toLowerCase(),
-      "Consideration token should be OTHER_NFT_CONTRACT"
-    );
-    assert.equal(sale?.considerationIdentifiers[0], "45", "Consideration identifier should be 45");
-    assert.equal(sale?.considerationAmounts[0], "1", "Consideration amount should be 1");
-  }
-}
-
 describe("Seaport relationship integrity tests", () => {
   let mockDb: any;
 
@@ -624,7 +537,6 @@ describe("Seaport relationship integrity tests", () => {
     for (let i = 0; i < 3; i++) {
       const tokenId = (1000 + i).toString();
       const token = currentDb.entities.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:${tokenId}`);
-      const saleId = `${events[i].chainId}_${events[i].transaction.hash}`;
 
       assert.ok(token, `Token ${tokenId} should exist`);
       // Note: With @derivedFrom relationships, sales are automatically linked
@@ -939,9 +851,6 @@ describe("Seaport relationship integrity tests", () => {
     });
 
     describe("Processes real-world OrderFulfilled events", () => {
-      const NFT_CONTRACT = "0xda6558fa1c2452938168ef79dfd29c45aba8a32b";
-      const OTHER_NFT_CONTRACT = "0x4440732b0d85e2a77dcb2caedfd940154241249a";
-
       // Create simple raw event data that works with the utility
       const rawEvent1 = {
         topics: [
@@ -1238,7 +1147,6 @@ describe("Seaport relationship integrity tests", () => {
         const finalDb = await processEvents([swapEvent], testMockDb);
 
         const saleId = `${chainId}_${transactionHash}`;
-        const sale = finalDb.entities.Sale.get(saleId);
 
         // Check if junctions are active (have valid account_id and sale_id)
         const user1SwapJunction = finalDb.entities.AccountSwap.get(

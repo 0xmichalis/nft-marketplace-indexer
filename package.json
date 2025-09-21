@@ -15,15 +15,22 @@
     "restart": "pnpm stop && pnpm start",
     "restart:clean": "pnpm stop -v && pnpm start",
     "test": "pnpm mocha",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix --max-warnings 0",
     "prepare": "husky"
   },
   "devDependencies": {
     "@types/chai": "^4.3.11",
     "@types/mocha": "10.0.6",
     "@types/node": "20.8.8",
-    "chai": "4.3.10",
+    "@typescript-eslint/eslint-plugin": "^8.44.0",
+    "@typescript-eslint/parser": "^8.44.0",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "chai": "^5.1.1",
     "dotenv": "^17.2.2",
     "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",
@@ -31,7 +38,9 @@
     "mocha": "10.2.0",
     "prettier": "^3.6.2",
     "ts-mocha": "^10.0.0",
-    "typescript": "5.2.2"
+    "prettier-plugin-packagejson": "^2.5.19",
+    "typescript": "5.2.2",
+    "typescript-eslint": "^8.44.0"
   },
   "dependencies": {
     "envio": "2.28.0",

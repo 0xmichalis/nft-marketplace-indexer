@@ -3,7 +3,6 @@ import { CryptoPunks, Sale } from "generated";
 import {
   getOrCreateAccount,
   createSaleNFTJunctions,
-  createAccountJunctionsForSale,
   createAccountBuy,
   createAccountSell,
 } from "./entities/EntityHelpers";

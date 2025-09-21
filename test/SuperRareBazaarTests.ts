@@ -1,4 +1,5 @@
 import assert from "assert";
+
 import { TestHelpers, Sale } from "generated";
 const { MockDb, SuperRareBazaar, SuperRareV1 } = TestHelpers;
 

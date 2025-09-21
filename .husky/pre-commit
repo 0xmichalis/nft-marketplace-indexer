@@ -2,7 +2,10 @@
 . "$(dirname "$0")/_/husky.sh"
 
 echo "🎨 Running Prettier formatting..."
-pnpm format
+pnpm format:fix
+
+echo "🔍 Running ESLint linting..."
+pnpm lint:fix
 
 if ! git diff --exit-code --quiet; then
   echo "📝 Auto-staging formatting changes..."
