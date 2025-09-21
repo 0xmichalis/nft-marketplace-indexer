@@ -210,8 +210,8 @@ export function createAccountSwap(
  *
  * Logic:
  * - No payments = Swap
- * - Payments in consideration = Offerer sells, recipient buys
- * - Payments in offer = Offerer buys, recipient sells
+ * - Who offers the payment token = Buyer
+ * - Who receives the payment token = Seller
  */
 export function createAccountJunctionsForSale(
   context: HandlerContext,
@@ -237,12 +237,16 @@ export function createAccountJunctionsForSale(
     return;
   }
 
-  // If the consideration has payments, the recipient is buying from the offerer
-  if (hasConsiderationPayments) {
-    createAccountSell(context, offererId, saleId);
-    createAccountBuy(context, recipientId, saleId);
-  } else {
+  // Determine who is the buyer and who is the seller based on payment flow
+  // The person who offers payment tokens is the buyer
+  // The person who receives payment tokens is the seller
+  if (hasOfferPayments) {
+    // Offerer offers payment tokens → Offerer is buyer, Recipient is seller
     createAccountBuy(context, offererId, saleId);
     createAccountSell(context, recipientId, saleId);
+  } else {
+    // Consideration contains payment tokens → Recipient is buyer, Offerer is seller
+    createAccountBuy(context, recipientId, saleId);
+    createAccountSell(context, offererId, saleId);
   }
 }

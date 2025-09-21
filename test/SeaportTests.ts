@@ -366,7 +366,7 @@ function validateMergedSale(sale: Sale, isExpectedOfferer: boolean) {
   const OTHER_NFT_CONTRACT = "0x4440732B0D85e2a77DCb2CAEDfd940154241249a";
   const WETH_CONTRACT = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   if (isExpectedOfferer) {
-    // michalis.eth is the offerer: offers NFT45, receives NFT55 + 4 WETH + NFT45
+    // offerer.eth is the offerer: offers NFT45, receives NFT55 + 4 WETH + NFT45
     assert.equal(sale?.offerItemTypes.length, 1, "Should have 1 offer item (NFT45)");
     assert.equal(sale?.offerItemTypes[0], 2, "Offer should be ERC721");
     assert.equal(
@@ -976,12 +976,12 @@ describe("Seaport relationship integrity tests", () => {
         {
           name: "Event1 then Event2",
           eventOrder: [rawEvent1, rawEvent2],
-          description: "Process michalis NFT45->NFT55+WETH, then WETH->NFT56",
+          description: "Process offerer NFT45->NFT55+WETH, then WETH->NFT56",
         },
         {
           name: "Event2 then Event1",
           eventOrder: [rawEvent2, rawEvent1],
-          description: "Process WETH->NFT56, then michalis NFT45->NFT55+WETH",
+          description: "Process WETH->NFT56, then offerer NFT45->NFT55+WETH",
         },
       ];
 
@@ -1420,6 +1420,79 @@ describe("Seaport relationship integrity tests", () => {
           "Buyer should NOT have active swap junction for complex sale"
         );
       });
+    });
+  });
+
+  describe("Specific Event Analysis", () => {
+    it("should correctly classify the offerer as buyer", async () => {
+      const mockDb = MockDb.createMockDb();
+
+      // Event data from user's query
+      const rawEvent = {
+        topics: [
+          "0x9d9af8e38d66c62e2c12f0225249fd9d721c54b83f48d9352c97c6cacdcb6f31",
+          "0x000000000000000000000000d2be832911a252302bac09e30fc124a405e142df", // offerer
+          "0x000000000000000000000000000056f7000000ece9003ca63978907a00ffd100", // zone
+        ],
+        data: "0x51c10c15de65d4aa4ac1a0d100c0297d9b8c9324477b85f176b68255539471f200000000000000000000000019f6c1d5c8308f7103524a339b0c7f0ad0f5b2d30000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b1a2bc2ec5000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000002000000000000000000000000fd9fdfac71bbc7dd5c7176644de7fbfd1a6825ee2370610ea917f65ec1d8f1773b8be54d518a43758190646fbe985479416d68e10000000000000000000000000000000000000000000000000000000000000001000000000000000000000000d2be832911a252302bac09e30fc124a405e142df0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e35fa931a0000000000000000000000000000000a26b00c1f0df003000390027140000faa719",
+        blockNumber: 12345678,
+        timestamp: 1640995200,
+        transactionHash: "0x9d9af8e38d66c62e2c12f0225249fd9d721c54b83f48d9352c97c6cacdcb6f31",
+        logIndex: 0,
+        chainId: 1,
+      };
+
+      // Decode the event
+      const event = decodeRawOrderFulfilledEvent(rawEvent);
+
+      console.log("Decoded event:");
+      console.log("Offerer:", event.params.offerer);
+      console.log("Recipient:", event.params.recipient);
+      console.log("Zone:", event.params.zone);
+      console.log("Offer items:", event.params.offer);
+      console.log("Consideration items:", event.params.consideration);
+
+      // Process the event
+      const updatedDb = await Seaport.OrderFulfilled.processEvent({
+        event,
+        mockDb,
+      });
+
+      const saleId = `${event.chainId}_${event.transaction.hash}`;
+      const sale = updatedDb.entities.Sale.get(saleId);
+
+      assert.ok(sale, "Sale should be created");
+
+      // Check the classification
+      const offererBuyJunction = updatedDb.entities.AccountBuy.get(
+        `${event.params.offerer.toLowerCase()}:${saleId}`
+      );
+      const offererSellJunction = updatedDb.entities.AccountSell.get(
+        `${event.params.offerer.toLowerCase()}:${saleId}`
+      );
+      const offererSwapJunction = updatedDb.entities.AccountSwap.get(
+        `${event.params.offerer.toLowerCase()}:${saleId}`
+      );
+
+      console.log("\nClassification results:");
+      console.log("offerer buy junction:", offererBuyJunction ? "EXISTS" : "MISSING");
+      console.log("offerer sell junction:", offererSellJunction ? "EXISTS" : "MISSING");
+      console.log("offerer swap junction:", offererSwapJunction ? "EXISTS" : "MISSING");
+
+      console.log("\nSale structure:");
+      console.log("Offer item types:", sale.offerItemTypes);
+      console.log("Offer tokens:", sale.offerTokens);
+      console.log("Offer amounts:", sale.offerAmounts);
+      console.log("Consideration item types:", sale.considerationItemTypes);
+      console.log("Consideration tokens:", sale.considerationTokens);
+      console.log("Consideration amounts:", sale.considerationAmounts);
+      console.log("Consideration recipients:", sale.considerationRecipients);
+
+      // Based on the expectation: offerer should pay WETH to receive NFT
+      // This should be classified as a BUY for offerer
+      assert.ok(offererBuyJunction, "offerer should have a buy junction");
+      assert.ok(!offererSellJunction, "offerer should NOT have a sell junction");
+      assert.ok(!offererSwapJunction, "offerer should NOT have a swap junction");
     });
   });
 });
