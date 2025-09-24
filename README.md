@@ -162,6 +162,25 @@ pnpm start
 
 Visit http://localhost:8080 and navigate to `Data` and click to track all database tables. Then you should be able to start using the playground.
 
+Track the deployment status and other metadata about the indexer by running the following query in the playground:
+
+```graphql
+{
+  _meta {
+    chainId
+    progressBlock
+    eventsProcessed
+    bufferBlock
+    firstEventBlock
+    sourceBlock
+    readyAt
+    isReady
+    startBlock
+    endBlock
+  }
+}
+```
+
 ### Upgrades
 
 If there are schema updates, currently the simplest approach is to restart with a clean slate.
