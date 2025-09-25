@@ -7,6 +7,8 @@ import {
   createAccountSell,
 } from "./entities/EntityHelpers";
 
+const FOUNDATION_TREASURY = "0x67Df244584b67E8C51B10aD610aAfFa9a402FdB6";
+
 Foundation.BuyPriceAccepted.handler(async ({ event, context }) => {
   const timestamp = BigInt(event.block.timestamp);
   const saleId = `${event.chainId}_${event.transaction.hash}`;
@@ -14,6 +16,7 @@ Foundation.BuyPriceAccepted.handler(async ({ event, context }) => {
   const nftContract = event.params.nftContract;
   const creatorRev = event.params.creatorRev.toString();
   const sellerRev = event.params.sellerRev.toString();
+  const foundationRev = event.params.totalFees.toString();
 
   // Ensure Account entities exist
   await getOrCreateAccount(context, event.params.buyer);
@@ -26,25 +29,26 @@ Foundation.BuyPriceAccepted.handler(async ({ event, context }) => {
     market: "Foundation",
 
     // Account relationships (use _id fields to establish relationships)
-    offerer_id: event.params.seller.toLowerCase(), // seller
-    recipient_id: event.params.buyer.toLowerCase(), // buyer
+    offerer_id: event.params.seller.toLowerCase(),
+    recipient_id: event.params.buyer.toLowerCase(),
 
     // For Foundation BuyPriceAccepted:
     // Offer: NFT from the specified contract
-    offerItemTypes: [2], // ERC721
-    offerTokens: [nftContract], // NFT contract address
+    offerItemTypes: [2],
+    offerTokens: [nftContract],
     offerIdentifiers: [tokenId],
-    offerAmounts: ["1"], // quantity 1 for NFT
+    offerAmounts: ["1"],
 
-    // Consideration: ETH payment split between seller and creator
-    considerationItemTypes: [0, 0], // ETH for both seller and creator
+    considerationItemTypes: [0, 0, 0],
     considerationTokens: [
-      "0x0000000000000000000000000000000000000000", // ETH address
-      "0x0000000000000000000000000000000000000000", // ETH address
+      "0x0000000000000000000000000000000000000000",
+      "0x0000000000000000000000000000000000000000",
+      "0x0000000000000000000000000000000000000000",
     ],
-    considerationIdentifiers: ["0", "0"], // no identifier for ETH
-    considerationAmounts: [sellerRev, creatorRev], // seller and creator amounts
-    considerationRecipients: [event.params.seller, event.params.seller], // both go to seller (Foundation handles creator split internally)
+    considerationIdentifiers: ["0", "0", "0"],
+    considerationAmounts: [sellerRev, creatorRev, foundationRev],
+    // TODO: Need to add the creator address to the considerationRecipients (instead of nftContract)
+    considerationRecipients: [event.params.seller, nftContract, FOUNDATION_TREASURY],
   };
 
   // Create SaleNFT junction entities for the NFT in the offer

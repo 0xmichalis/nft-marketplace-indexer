@@ -91,21 +91,29 @@ describe("Foundation event tests", () => {
       assert.equal(actualSale.offerAmounts[0], "1");
 
       // Assertions for consideration items (ETH payment split)
-      assert.equal(actualSale.considerationItemTypes.length, 2);
+      assert.equal(actualSale.considerationItemTypes.length, 3);
       assert.equal(actualSale.considerationItemTypes[0], 0); // ETH
       assert.equal(actualSale.considerationItemTypes[1], 0); // ETH
-      assert.equal(actualSale.considerationTokens.length, 2);
+      assert.equal(actualSale.considerationItemTypes[2], 0); // ETH
+      assert.equal(actualSale.considerationTokens.length, 3);
       assert.equal(actualSale.considerationTokens[0], ZERO_ADDRESS);
       assert.equal(actualSale.considerationTokens[1], ZERO_ADDRESS);
-      assert.equal(actualSale.considerationIdentifiers.length, 2);
+      assert.equal(actualSale.considerationTokens[2], ZERO_ADDRESS);
+      assert.equal(actualSale.considerationIdentifiers.length, 3);
       assert.equal(actualSale.considerationIdentifiers[0], "0");
       assert.equal(actualSale.considerationIdentifiers[1], "0");
-      assert.equal(actualSale.considerationAmounts.length, 2);
+      assert.equal(actualSale.considerationIdentifiers[2], "0");
+      assert.equal(actualSale.considerationAmounts.length, 3);
       assert.equal(actualSale.considerationAmounts[0], "975000000000000000"); // seller amount
       assert.equal(actualSale.considerationAmounts[1], "25000000000000000"); // creator amount
-      assert.equal(actualSale.considerationRecipients.length, 2);
+      assert.equal(actualSale.considerationAmounts[2], "1000000000000000000"); // foundation amount (totalFees)
+      assert.equal(actualSale.considerationRecipients.length, 3);
       assert.equal(actualSale.considerationRecipients[0], SELLER_ADDRESS);
-      assert.equal(actualSale.considerationRecipients[1], SELLER_ADDRESS);
+      assert.equal(actualSale.considerationRecipients[1], NFT_CONTRACT);
+      assert.equal(
+        actualSale.considerationRecipients[2],
+        "0x67Df244584b67E8C51B10aD610aAfFa9a402FdB6"
+      ); // Foundation treasury
 
       // Assertions for Account entities
       assert(actualBuyerAccount, "Buyer account should be created");
