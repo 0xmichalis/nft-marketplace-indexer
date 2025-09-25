@@ -32,7 +32,6 @@ export const QUERY_FRAGMENTS = {
             address
           }
         }
-        isOffer
       }
     `,
 };
@@ -121,7 +120,6 @@ export interface SaleNFT {
       address: string;
     };
   };
-  isOffer: boolean;
 }
 
 export interface Sale {

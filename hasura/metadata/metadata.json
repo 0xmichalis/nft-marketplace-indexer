@@ -294,7 +294,7 @@
               {
                 "role": "public",
                 "permission": {
-                  "columns": ["isOffer", "id", "nftToken_id", "sale_id", "db_write_timestamp"],
+                  "columns": ["id", "nftToken_id", "sale_id", "db_write_timestamp"],
                   "filter": {}
                 },
                 "comment": ""
