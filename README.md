@@ -12,6 +12,8 @@ Indexer for various NFT marketplaces on Ethereum (Seaport, SuperRare, KnownOrigi
 
 ## Example queries
 
+_A quirk in the queries is that user addresses should be checksummed (EIP-55) whereas contract addresses should be lowercased (eg, in `SalesByNFTContract` or `SalesByNFTToken`)._
+
 ### 1. User Activity Queries
 
 **Find buys, sells, or swaps by user address**
