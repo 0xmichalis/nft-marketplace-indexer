@@ -105,7 +105,7 @@ export function getNFTItems(
 
     // Only process NFTs (ERC721 = 2, ERC1155 = 3)
     if (itemType === 2 || itemType === 3) {
-      const contractAddress = offerTokens[i].toLowerCase();
+      const contractAddress = offerTokens[i];
       const tokenId = offerIdentifiers[i];
 
       offerNftItems.push({ contractAddress, tokenId, itemType });
@@ -118,7 +118,7 @@ export function getNFTItems(
 
     // Only process NFTs (ERC721 = 2, ERC1155 = 3)
     if (itemType === 2 || itemType === 3) {
-      const contractAddress = considerationTokens[i].toLowerCase();
+      const contractAddress = considerationTokens[i];
       const tokenId = considerationIdentifiers[i];
 
       considerationNftItems.push({ contractAddress, tokenId, itemType });
