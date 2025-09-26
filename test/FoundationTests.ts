@@ -306,6 +306,40 @@ describe("Foundation event tests", () => {
       );
       assert.equal(sellerSellJunctions.length, 2, "Seller should have 2 sell junctions");
     });
+
+    it("Routes creator fee to seller when sellerRev is zero", async () => {
+      const event = Foundation.BuyPriceAccepted.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 4242n,
+        seller: SELLER_ADDRESS,
+        buyer: BUYER_ADDRESS,
+        protocolFee: 100000000000000000n, // 0.1 ETH
+        creatorFee: 25000000000000000n, // 0.025 ETH
+        sellerRev: 0n, // no seller revenue
+        mockEventData: {
+          block: { number: 18500006, timestamp: 1700000006 },
+          transaction: { hash: "0xtxhash_seller_rev_zero" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const db = await Foundation.BuyPriceAccepted.processEvent({
+        event,
+        mockDb: MockDb.createMockDb(),
+      });
+
+      const sale = db.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+      assert(sale, "Sale should be created");
+      // With zero sellerRev, only creator and protocol entries should exist
+      assert.equal(sale.considerationAmounts.length, 2);
+      assert.equal(sale.considerationAmounts[0], "25000000000000000");
+      assert.equal(sale.considerationAmounts[1], "100000000000000000");
+      // Creator fee should be routed to the seller when sellerRev is zero
+      assert.equal(sale.considerationRecipients[0], SELLER_ADDRESS);
+      assert.equal(sale.considerationRecipients[1], "0x67Df244584b67E8C51B10aD610aAfFa9a402FdB6");
+    });
   });
 
   describe("OfferAccepted event tests", () => {
@@ -569,6 +603,62 @@ describe("Foundation event tests", () => {
       assert.equal(sale.considerationAmounts[0], "700000000000000000");
       assert.equal(sale.considerationAmounts[1], "20000000000000000");
       assert.equal(sale.considerationAmounts[2], "100000000000000000");
+    });
+
+    it("Routes creator fee to seller when ownerRev is zero on finalize", async () => {
+      const auctionId = 3003n;
+      const created = Foundation.ReserveAuctionCreated.createMockEvent({
+        seller: SELLER_ADDRESS,
+        nftContract: NFT_CONTRACT,
+        tokenId: 808n,
+        duration: 7200n,
+        extensionDuration: 60n,
+        reservePrice: 500000000000000000n,
+        auctionId,
+        mockEventData: {
+          block: { number: 18600020, timestamp: 1701000020 },
+          transaction: { hash: "0xtxhash_reserve_created_3" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const dbAfterCreate = await Foundation.ReserveAuctionCreated.processEvent({
+        event: created,
+        mockDb: MockDb.createMockDb(),
+      });
+
+      const finalized = Foundation.ReserveAuctionFinalized.createMockEvent({
+        auctionId,
+        seller: SELLER_ADDRESS,
+        bidder: BUYER_ADDRESS,
+        protocolFee: 100000000000000000n, // 0.1
+        creatorFee: 20000000000000000n, // 0.02
+        ownerRev: 0n, // zero seller revenue
+        mockEventData: {
+          block: { number: 18600021, timestamp: 1701000021 },
+          transaction: { hash: "0xtxhash_reserve_finalized_3" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const dbAfterFinalize = await Foundation.ReserveAuctionFinalized.processEvent({
+        event: finalized,
+        mockDb: dbAfterCreate,
+      });
+
+      const sale = dbAfterFinalize.entities.Sale.get(`1_${finalized.transaction.hash}`);
+      assert(sale, "Sale should be created on finalize");
+      // Only creator and protocol entries
+      assert.equal(sale.considerationAmounts.length, 2);
+      assert.equal(sale.considerationAmounts[0], "20000000000000000");
+      assert.equal(sale.considerationAmounts[1], "100000000000000000");
+      // Creator fee routed to seller
+      assert.equal(sale.considerationRecipients[0], SELLER_ADDRESS);
+      assert.equal(sale.considerationRecipients[1], "0x67Df244584b67E8C51B10aD610aAfFa9a402FdB6");
     });
   });
 });

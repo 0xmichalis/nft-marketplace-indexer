@@ -21,7 +21,7 @@ async function handleFoundationSale(
     seller: string;
     protocolFee: string;
     creatorFee: string;
-    sellerRev: string;
+    sellerRev?: string;
   }
 ): Promise<void> {
   const timestamp = BigInt(params.blockTimestamp);
@@ -30,24 +30,35 @@ async function handleFoundationSale(
   await getOrCreateAccount(context, params.buyer);
   await getOrCreateAccount(context, params.seller);
 
-  // Build consideration arrays dynamically to exclude zero-value entries for creator and fees
-  const considerationItemTypes: number[] = [0];
-  const considerationTokens: string[] = ["0x0000000000000000000000000000000000000000"];
-  const considerationIdentifiers: string[] = ["0"];
-  const considerationAmounts: string[] = [params.sellerRev];
-  const considerationRecipients: string[] = [params.seller];
+  // Build consideration arrays dynamically to exclude zero-value or empty entries
+  const considerationItemTypes: number[] = [];
+  const considerationTokens: string[] = [];
+  const considerationIdentifiers: string[] = [];
+  const considerationAmounts: string[] = [];
+  const considerationRecipients: string[] = [];
 
-  if (params.creatorFee !== "0") {
+  if (params.sellerRev && params.sellerRev !== "0") {
+    considerationItemTypes.push(0);
+    considerationTokens.push("0x0000000000000000000000000000000000000000");
+    considerationIdentifiers.push("0");
+    considerationAmounts.push(params.sellerRev);
+    considerationRecipients.push(params.seller);
+  }
+
+  if (params.creatorFee && params.creatorFee !== "0") {
     considerationItemTypes.push(0);
     considerationTokens.push("0x0000000000000000000000000000000000000000");
     considerationIdentifiers.push("0");
     considerationAmounts.push(params.creatorFee);
+    // In case the seller is not making any revenue, then it is the creator who is the
+    // actual seller.
     // TODO: replace nftContract with actual creator address; this will require RPC calls
     // which is going to slow down syncing
-    considerationRecipients.push(params.nftContract);
+    const noSellerRev = !params.sellerRev || params.sellerRev === "0";
+    considerationRecipients.push(noSellerRev ? params.seller : params.nftContract);
   }
 
-  if (params.protocolFee !== "0") {
+  if (params.protocolFee && params.protocolFee !== "0") {
     considerationItemTypes.push(0);
     considerationTokens.push("0x0000000000000000000000000000000000000000");
     considerationIdentifiers.push("0");
@@ -96,7 +107,7 @@ Foundation.BuyPriceAccepted.handler(async ({ event, context }) => {
     seller: event.params.seller,
     protocolFee: event.params.protocolFee.toString(),
     creatorFee: event.params.creatorFee.toString(),
-    sellerRev: event.params.sellerRev.toString(),
+    sellerRev: event.params.sellerRev?.toString(),
   });
 });
 
@@ -111,7 +122,7 @@ Foundation.OfferAccepted.handler(async ({ event, context }) => {
     seller: event.params.seller,
     protocolFee: event.params.protocolFee.toString(),
     creatorFee: event.params.creatorFee.toString(),
-    sellerRev: event.params.sellerRev.toString(),
+    sellerRev: event.params.sellerRev?.toString(),
   });
 });
 
@@ -126,7 +137,7 @@ Foundation.PrivateSaleFinalized.handler(async ({ event, context }) => {
     seller: event.params.seller,
     protocolFee: event.params.protocolFee.toString(),
     creatorFee: event.params.creatorFee.toString(),
-    sellerRev: event.params.sellerRev.toString(),
+    sellerRev: event.params.sellerRev?.toString(),
   });
 });
 
