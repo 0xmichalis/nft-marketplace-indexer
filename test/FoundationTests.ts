@@ -479,4 +479,96 @@ describe("Foundation event tests", () => {
       assert.equal(sale.considerationRecipients[1], "0x67Df244584b67E8C51B10aD610aAfFa9a402FdB6");
     });
   });
+
+  describe("Reserve auction events", () => {
+    it("Stores auction mapping on ReserveAuctionCreated", async () => {
+      const auctionId = 1001n;
+      const event = Foundation.ReserveAuctionCreated.createMockEvent({
+        seller: SELLER_ADDRESS,
+        nftContract: NFT_CONTRACT,
+        tokenId: 42n,
+        duration: 86400n,
+        extensionDuration: 300n,
+        reservePrice: 100000000000000000n,
+        auctionId,
+        mockEventData: {
+          block: { number: 18600000, timestamp: 1701000000 },
+          transaction: { hash: "0xtxhash_reserve_created" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const db = await Foundation.ReserveAuctionCreated.processEvent({
+        event,
+        mockDb: MockDb.createMockDb(),
+      });
+
+      const auction = db.entities.FoundationAuction.get(auctionId.toString());
+      assert(auction, "FoundationAuction should be stored");
+      assert.equal(auction.id, auctionId.toString());
+      assert.equal(auction.nftContract, NFT_CONTRACT);
+      assert.equal(auction.tokenId, "42");
+    });
+
+    it("Creates sale on ReserveAuctionFinalized using stored mapping", async () => {
+      const auctionId = 2002n;
+      const created = Foundation.ReserveAuctionCreated.createMockEvent({
+        seller: SELLER_ADDRESS,
+        nftContract: NFT_CONTRACT,
+        tokenId: 777n,
+        duration: 7200n,
+        extensionDuration: 60n,
+        reservePrice: 500000000000000000n,
+        auctionId,
+        mockEventData: {
+          block: { number: 18600010, timestamp: 1701000010 },
+          transaction: { hash: "0xtxhash_reserve_created_2" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const dbAfterCreate = await Foundation.ReserveAuctionCreated.processEvent({
+        event: created,
+        mockDb: MockDb.createMockDb(),
+      });
+
+      const finalized = Foundation.ReserveAuctionFinalized.createMockEvent({
+        auctionId,
+        seller: SELLER_ADDRESS,
+        bidder: BUYER_ADDRESS,
+        protocolFee: 100000000000000000n, // 0.1
+        creatorFee: 20000000000000000n, // 0.02
+        ownerRev: 700000000000000000n, // 0.7
+        mockEventData: {
+          block: { number: 18600011, timestamp: 1701000011 },
+          transaction: { hash: "0xtxhash_reserve_finalized_2" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const dbAfterFinalize = await Foundation.ReserveAuctionFinalized.processEvent({
+        event: finalized,
+        mockDb: dbAfterCreate,
+      });
+
+      const saleId = `1_${finalized.transaction.hash}`;
+      const sale = dbAfterFinalize.entities.Sale.get(saleId);
+      assert(sale, "Sale should be created on finalize");
+      assert.equal(sale.offerTokens[0], NFT_CONTRACT);
+      assert.equal(sale.offerIdentifiers[0], "777");
+      assert.equal(sale.recipient_id, BUYER_ADDRESS.toLowerCase());
+      assert.equal(sale.offerer_id, SELLER_ADDRESS.toLowerCase());
+      // Consideration should include sellerRev, creatorFee (non-zero), protocolFee
+      assert.equal(sale.considerationAmounts.length, 3);
+      assert.equal(sale.considerationAmounts[0], "700000000000000000");
+      assert.equal(sale.considerationAmounts[1], "20000000000000000");
+      assert.equal(sale.considerationAmounts[2], "100000000000000000");
+    });
+  });
 });

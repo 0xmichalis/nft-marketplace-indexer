@@ -1,4 +1,4 @@
-import { Foundation, Sale, HandlerContext } from "generated";
+import { Foundation, Sale, HandlerContext, FoundationAuction } from "generated";
 
 import {
   getOrCreateAccount,
@@ -127,5 +127,37 @@ Foundation.PrivateSaleFinalized.handler(async ({ event, context }) => {
     protocolFee: event.params.protocolFee.toString(),
     creatorFee: event.params.creatorFee.toString(),
     sellerRev: event.params.sellerRev.toString(),
+  });
+});
+
+// Track auctions on creation so we can reference them on finalize
+Foundation.ReserveAuctionCreated.handler(async ({ event, context }) => {
+  const auction: FoundationAuction = {
+    id: event.params.auctionId.toString(),
+    nftContract: event.params.nftContract,
+    tokenId: event.params.tokenId.toString(),
+  };
+
+  context.FoundationAuction.set(auction);
+});
+
+Foundation.ReserveAuctionFinalized.handler(async ({ event, context }) => {
+  const auctionId = event.params.auctionId.toString();
+  const auction = await context.FoundationAuction.get(auctionId);
+  if (!auction) {
+    return;
+  }
+
+  await handleFoundationSale(context, {
+    chainId: event.chainId,
+    transactionHash: event.transaction.hash,
+    blockTimestamp: event.block.timestamp,
+    nftContract: auction.nftContract,
+    tokenId: auction.tokenId,
+    buyer: event.params.bidder,
+    seller: event.params.seller,
+    protocolFee: event.params.protocolFee.toString(),
+    creatorFee: event.params.creatorFee.toString(),
+    sellerRev: event.params.ownerRev.toString(),
   });
 });

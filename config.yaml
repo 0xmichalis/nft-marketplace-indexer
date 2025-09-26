@@ -14,7 +14,7 @@ networks:
     rpc:
       - url: https://eth.llamarpc.com
         for: fallback
-      - url: https://rpc.flashbots.net
+      - url: https://ethereum-rpc.publicnode.com
         for: fallback
     contracts:
       - name: Seaport
@@ -67,9 +67,8 @@ networks:
           - event: BuyPriceAccepted(address indexed nftContract, uint256 indexed tokenId, address indexed seller, address buyer, uint256 protocolFee, uint256 creatorFee, uint256 sellerRev)
           - event: OfferAccepted(address indexed nftContract, uint256 indexed tokenId, address indexed buyer, address seller, uint256 protocolFee, uint256 creatorFee, uint256 sellerRev)
           - event: PrivateSaleFinalized(address indexed nftContract, uint256 indexed tokenId, address indexed seller, address buyer, uint256 protocolFee, uint256 creatorFee, uint256 sellerRev, uint256 deadline)
-          # TODO: Support ReserveAuctionFinalized event. To do this effectively, we need to use the Effect API to call the Foundation contract's getReserveAuction function.
-          #       Additionally, we need to inspect all implementations since the deployment of the proxy to ensure the function is available across implementations.
-          # - event: ReserveAuctionFinalized(uint256 indexed auctionId, address indexed seller, address indexed bidder, uint256 protocolFee, uint256 creatorFee, uint256 ownerRev)
+          - event: ReserveAuctionCreated(address indexed seller, address indexed nftContract, uint256 indexed tokenId, uint256 duration, uint256 extensionDuration, uint256 reservePrice, uint256 auctionId)
+          - event: ReserveAuctionFinalized(uint256 indexed auctionId, address indexed seller, address indexed bidder, uint256 protocolFee, uint256 creatorFee, uint256 ownerRev)
 
       - name: CryptoPunks
         address:

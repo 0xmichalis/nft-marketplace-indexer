@@ -70,3 +70,10 @@ type AccountSwap {
   account: Account!
   sale: Sale!
 }
+
+# Minimal mapping of auctionId -> NFT reference for Foundation reserve auctions
+type FoundationAuction {
+  id: ID! # auctionId
+  nftContract: String!
+  tokenId: String!
+}
