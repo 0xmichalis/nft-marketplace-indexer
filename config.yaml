@@ -11,6 +11,11 @@ field_selection:
 networks:
   - id: 1
     start_block: 0
+    rpc:
+      - url: https://eth.llamarpc.com
+        for: fallback
+      - url: https://rpc.flashbots.net
+        for: fallback
     contracts:
       - name: Seaport
         address:
