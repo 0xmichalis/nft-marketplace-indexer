@@ -22,8 +22,8 @@ describe("Foundation event tests", () => {
         tokenId: 456n,
         seller: SELLER_ADDRESS,
         buyer: BUYER_ADDRESS,
-        totalFees: 1000000000000000000n, // 1 ETH in wei
-        creatorRev: 25000000000000000n, // 0.025 ETH (2.5%)
+        protocolFee: 1000000000000000000n, // 1 ETH in wei
+        creatorFee: 25000000000000000n, // 0.025 ETH (2.5%)
         sellerRev: 975000000000000000n, // 0.975 ETH (97.5%)
         mockEventData: {
           block: {
@@ -106,7 +106,7 @@ describe("Foundation event tests", () => {
       assert.equal(actualSale.considerationAmounts.length, 3);
       assert.equal(actualSale.considerationAmounts[0], "975000000000000000"); // seller amount
       assert.equal(actualSale.considerationAmounts[1], "25000000000000000"); // creator amount
-      assert.equal(actualSale.considerationAmounts[2], "1000000000000000000"); // foundation amount (totalFees)
+      assert.equal(actualSale.considerationAmounts[2], "1000000000000000000"); // foundation amount (protocolFee)
       assert.equal(actualSale.considerationRecipients.length, 3);
       assert.equal(actualSale.considerationRecipients[0], SELLER_ADDRESS);
       assert.equal(actualSale.considerationRecipients[1], NFT_CONTRACT);
@@ -150,8 +150,8 @@ describe("Foundation event tests", () => {
         tokenId: 999999n, // Large token ID
         seller: SELLER_ADDRESS,
         buyer: BUYER_ADDRESS,
-        totalFees: 2000000000000000000n, // 2 ETH
-        creatorRev: 50000000000000000n, // 0.05 ETH
+        protocolFee: 2000000000000000000n, // 2 ETH
+        creatorFee: 50000000000000000n, // 0.05 ETH
         sellerRev: 1950000000000000000n, // 1.95 ETH
         mockEventData: {
           block: { number: 18500001, timestamp: 1700000001 },
@@ -186,8 +186,8 @@ describe("Foundation event tests", () => {
         tokenId: 123n,
         seller: SELLER_ADDRESS,
         buyer: BUYER_ADDRESS,
-        totalFees: 1000000000000000000n, // 1 ETH
-        creatorRev: 0n, // No creator fee
+        protocolFee: 1000000000000000000n, // 1 ETH
+        creatorFee: 0n, // No creator fee
         sellerRev: 1000000000000000000n, // Full amount to seller
         mockEventData: {
           block: { number: 18500002, timestamp: 1700000002 },
@@ -230,8 +230,8 @@ describe("Foundation event tests", () => {
         tokenId: 100n,
         seller: SELLER_ADDRESS,
         buyer: BUYER_ADDRESS,
-        totalFees: 1000000000000000000n,
-        creatorRev: 25000000000000000n,
+        protocolFee: 1000000000000000000n,
+        creatorFee: 25000000000000000n,
         sellerRev: 975000000000000000n,
         mockEventData: {
           block: { number: 18500003, timestamp: 1700000003 },
@@ -249,8 +249,8 @@ describe("Foundation event tests", () => {
         tokenId: 200n,
         seller: SELLER_ADDRESS,
         buyer: BUYER2_ADDRESS,
-        totalFees: 2000000000000000000n,
-        creatorRev: 50000000000000000n,
+        protocolFee: 2000000000000000000n,
+        creatorFee: 50000000000000000n,
         sellerRev: 1950000000000000000n,
         mockEventData: {
           block: { number: 18500004, timestamp: 1700000004 },
@@ -315,8 +315,8 @@ describe("Foundation event tests", () => {
         tokenId: 789n,
         buyer: BUYER_ADDRESS,
         seller: SELLER_ADDRESS,
-        totalFees: 500000000000000000n, // 0.5 ETH
-        creatorRev: 10000000000000000n, // 0.01 ETH
+        protocolFee: 500000000000000000n, // 0.5 ETH
+        creatorFee: 10000000000000000n, // 0.01 ETH
         sellerRev: 490000000000000000n, // 0.49 ETH
         mockEventData: {
           block: {
@@ -357,8 +357,8 @@ describe("Foundation event tests", () => {
         tokenId: 111n,
         buyer: BUYER_ADDRESS,
         seller: SELLER_ADDRESS,
-        totalFees: 100000000000000000n, // 0.1 ETH
-        creatorRev: 0n, // zero
+        protocolFee: 100000000000000000n, // 0.1 ETH
+        creatorFee: 0n, // zero
         sellerRev: 900000000000000000n, // 0.9 ETH
         mockEventData: {
           block: { number: 18500011, timestamp: 1700000011 },
@@ -386,8 +386,8 @@ describe("Foundation event tests", () => {
         tokenId: 112n,
         buyer: BUYER_ADDRESS,
         seller: SELLER_ADDRESS,
-        totalFees: 0n, // zero
-        creatorRev: 0n, // zero
+        protocolFee: 0n, // zero
+        creatorFee: 0n, // zero
         sellerRev: 1000000000000000000n, // 1 ETH
         mockEventData: {
           block: { number: 18500012, timestamp: 1700000012 },

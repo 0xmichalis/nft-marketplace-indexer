@@ -19,8 +19,8 @@ async function handleFoundationSale(
     tokenId: string;
     buyer: string;
     seller: string;
-    totalFees: string;
-    creatorRev: string;
+    protocolFee: string;
+    creatorFee: string;
     sellerRev: string;
   }
 ): Promise<void> {
@@ -37,21 +37,21 @@ async function handleFoundationSale(
   const considerationAmounts: string[] = [params.sellerRev];
   const considerationRecipients: string[] = [params.seller];
 
-  if (params.creatorRev !== "0") {
+  if (params.creatorFee !== "0") {
     considerationItemTypes.push(0);
     considerationTokens.push("0x0000000000000000000000000000000000000000");
     considerationIdentifiers.push("0");
-    considerationAmounts.push(params.creatorRev);
+    considerationAmounts.push(params.creatorFee);
     // TODO: replace nftContract with actual creator address; this will require RPC calls
     // which is going to slow down syncing
     considerationRecipients.push(params.nftContract);
   }
 
-  if (params.totalFees !== "0") {
+  if (params.protocolFee !== "0") {
     considerationItemTypes.push(0);
     considerationTokens.push("0x0000000000000000000000000000000000000000");
     considerationIdentifiers.push("0");
-    considerationAmounts.push(params.totalFees);
+    considerationAmounts.push(params.protocolFee);
     considerationRecipients.push(FOUNDATION_TREASURY);
   }
 
@@ -94,8 +94,8 @@ Foundation.BuyPriceAccepted.handler(async ({ event, context }) => {
     tokenId: event.params.tokenId.toString(),
     buyer: event.params.buyer,
     seller: event.params.seller,
-    totalFees: event.params.totalFees.toString(),
-    creatorRev: event.params.creatorRev.toString(),
+    protocolFee: event.params.protocolFee.toString(),
+    creatorFee: event.params.creatorFee.toString(),
     sellerRev: event.params.sellerRev.toString(),
   });
 });
@@ -109,8 +109,8 @@ Foundation.OfferAccepted.handler(async ({ event, context }) => {
     tokenId: event.params.tokenId.toString(),
     buyer: event.params.buyer,
     seller: event.params.seller,
-    totalFees: event.params.totalFees.toString(),
-    creatorRev: event.params.creatorRev.toString(),
+    protocolFee: event.params.protocolFee.toString(),
+    creatorFee: event.params.creatorFee.toString(),
     sellerRev: event.params.sellerRev.toString(),
   });
 });

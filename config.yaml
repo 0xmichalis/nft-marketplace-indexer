@@ -59,11 +59,11 @@ networks:
           - "0xcDA72070E455bb31C7690a170224Ce43623d0B6f"
         handler: src/FoundationEventHandlers.ts
         events:
-          - event: BuyPriceAccepted(address indexed nftContract, uint256 indexed tokenId, address indexed seller, address buyer, uint256 totalFees, uint256 creatorRev, uint256 sellerRev)
-          - event: OfferAccepted(address indexed nftContract, uint256 indexed tokenId, address indexed buyer, address seller, uint256 totalFees, uint256 creatorRev, uint256 sellerRev)
+          - event: BuyPriceAccepted(address indexed nftContract, uint256 indexed tokenId, address indexed seller, address buyer, uint256 protocolFee, uint256 creatorFee, uint256 sellerRev)
+          - event: OfferAccepted(address indexed nftContract, uint256 indexed tokenId, address indexed buyer, address seller, uint256 protocolFee, uint256 creatorFee, uint256 sellerRev)
           # TODO: Support ReserveAuctionFinalized event. To do this effectively, we need to use the Effect API to call the Foundation contract's getReserveAuction function.
           #       Additionally, we need to inspect all implementations since the deployment of the proxy to ensure the function is available across implementations.
-          # - event: ReserveAuctionFinalized(uint256 indexed auctionId, address indexed seller, address indexed bidder, uint256 f8nFee, uint256 creatorFee, uint256 ownerRev)
+          # - event: ReserveAuctionFinalized(uint256 indexed auctionId, address indexed seller, address indexed bidder, uint256 protocolFee, uint256 creatorFee, uint256 ownerRev)
 
       - name: CryptoPunks
         address:
