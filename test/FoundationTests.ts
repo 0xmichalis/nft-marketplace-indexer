@@ -180,7 +180,7 @@ describe("Foundation event tests", () => {
       assert.equal(actualNFTToken.tokenId, "999999");
     });
 
-    it("Handles zero creator fee correctly", async () => {
+    it("Handles zero creator fee correctly (excludes zero entries)", async () => {
       const event = Foundation.BuyPriceAccepted.createMockEvent({
         nftContract: NFT_CONTRACT,
         tokenId: 123n,
@@ -207,8 +207,18 @@ describe("Foundation event tests", () => {
         `${event.chainId}_${event.transaction.hash}`
       );
       assert(actualSale, "Sale should be created");
+      // Should only include seller and foundation entries (no zero creator line)
+      assert.equal(actualSale.considerationItemTypes.length, 2);
+      assert.equal(actualSale.considerationTokens.length, 2);
+      assert.equal(actualSale.considerationIdentifiers.length, 2);
+      assert.equal(actualSale.considerationAmounts.length, 2);
+      assert.equal(actualSale.considerationRecipients.length, 2);
       assert.equal(actualSale.considerationAmounts[0], "1000000000000000000"); // seller amount
-      assert.equal(actualSale.considerationAmounts[1], "0"); // creator amount
+      assert.equal(actualSale.considerationRecipients[0], SELLER_ADDRESS);
+      assert.equal(
+        actualSale.considerationRecipients[1],
+        "0x67Df244584b67E8C51B10aD610aAfFa9a402FdB6"
+      ); // Foundation treasury
     });
 
     it("Creates separate account junctions for different sales", async () => {
@@ -295,6 +305,110 @@ describe("Foundation event tests", () => {
         (junction) => junction.account_id === SELLER_ADDRESS.toLowerCase()
       );
       assert.equal(sellerSellJunctions.length, 2, "Seller should have 2 sell junctions");
+    });
+  });
+
+  describe("OfferAccepted event tests", () => {
+    it("Sale is created correctly for OfferAccepted event", async () => {
+      const event = Foundation.OfferAccepted.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 789n,
+        buyer: BUYER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        totalFees: 500000000000000000n, // 0.5 ETH
+        creatorRev: 10000000000000000n, // 0.01 ETH
+        sellerRev: 490000000000000000n, // 0.49 ETH
+        mockEventData: {
+          block: {
+            number: 18500010,
+            timestamp: 1700000010,
+          },
+          transaction: {
+            hash: "0xtxhash_offer_1",
+          },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const mockDbUpdated = await Foundation.OfferAccepted.processEvent({
+        event,
+        mockDb: MockDb.createMockDb(),
+      });
+
+      const actualSale = mockDbUpdated.entities.Sale.get(
+        `${event.chainId}_${event.transaction.hash}`
+      );
+      assert(actualSale, "Sale should be created");
+      assert.equal(actualSale.offerer_id, SELLER_ADDRESS.toLowerCase());
+      assert.equal(actualSale.recipient_id, BUYER_ADDRESS.toLowerCase());
+
+      // Consideration arrays should include seller, creator, foundation
+      assert.equal(actualSale.considerationAmounts.length, 3);
+      assert.equal(actualSale.considerationAmounts[0], "490000000000000000");
+      assert.equal(actualSale.considerationAmounts[1], "10000000000000000");
+      assert.equal(actualSale.considerationAmounts[2], "500000000000000000");
+    });
+
+    it("Excludes zero creator and/or fee entries", async () => {
+      const eventNoCreator = Foundation.OfferAccepted.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 111n,
+        buyer: BUYER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        totalFees: 100000000000000000n, // 0.1 ETH
+        creatorRev: 0n, // zero
+        sellerRev: 900000000000000000n, // 0.9 ETH
+        mockEventData: {
+          block: { number: 18500011, timestamp: 1700000011 },
+          transaction: { hash: "0xtxhash_offer_2" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const dbAfterNoCreator = await Foundation.OfferAccepted.processEvent({
+        event: eventNoCreator,
+        mockDb: MockDb.createMockDb(),
+      });
+      const saleNoCreator = dbAfterNoCreator.entities.Sale.get(
+        `${eventNoCreator.chainId}_${eventNoCreator.transaction.hash}`
+      );
+      assert(saleNoCreator, "Sale should be created");
+      assert.equal(saleNoCreator.considerationAmounts.length, 2);
+      // Ensure no zero entries present
+      assert(!saleNoCreator.considerationAmounts.includes("0"));
+
+      const eventNoFees = Foundation.OfferAccepted.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 112n,
+        buyer: BUYER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        totalFees: 0n, // zero
+        creatorRev: 0n, // zero
+        sellerRev: 1000000000000000000n, // 1 ETH
+        mockEventData: {
+          block: { number: 18500012, timestamp: 1700000012 },
+          transaction: { hash: "0xtxhash_offer_3" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const dbAfterNoFees = await Foundation.OfferAccepted.processEvent({
+        event: eventNoFees,
+        mockDb: dbAfterNoCreator,
+      });
+      const saleNoFees = dbAfterNoFees.entities.Sale.get(
+        `${eventNoFees.chainId}_${eventNoFees.transaction.hash}`
+      );
+      assert(saleNoFees, "Sale should be created");
+      assert.equal(saleNoFees.considerationAmounts.length, 1);
+      assert.equal(saleNoFees.considerationAmounts[0], "1000000000000000000");
+      assert(!saleNoFees.considerationAmounts.includes("0"));
     });
   });
 });
