@@ -411,4 +411,72 @@ describe("Foundation event tests", () => {
       assert(!saleNoFees.considerationAmounts.includes("0"));
     });
   });
+
+  describe("PrivateSaleFinalized event tests", () => {
+    it("Sale is created correctly for PrivateSaleFinalized event", async () => {
+      const event = Foundation.PrivateSaleFinalized.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 321n,
+        seller: SELLER_ADDRESS,
+        buyer: BUYER_ADDRESS,
+        protocolFee: 300000000000000000n, // 0.3 ETH
+        creatorFee: 20000000000000000n, // 0.02 ETH
+        sellerRev: 680000000000000000n, // 0.68 ETH
+        deadline: 1900000000n,
+        mockEventData: {
+          block: { number: 18500020, timestamp: 1700000020 },
+          transaction: { hash: "0xtxhash_private_1" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const mockDbUpdated = await Foundation.PrivateSaleFinalized.processEvent({
+        event,
+        mockDb: MockDb.createMockDb(),
+      });
+
+      const sale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+      assert(sale, "Sale should be created");
+      assert.equal(sale.offerTokens[0], NFT_CONTRACT);
+      assert.equal(sale.offerIdentifiers[0], "321");
+      assert.equal(sale.recipient_id, BUYER_ADDRESS.toLowerCase());
+      assert.equal(sale.offerer_id, SELLER_ADDRESS.toLowerCase());
+      assert.equal(sale.considerationAmounts.length, 3);
+      assert.equal(sale.considerationAmounts[0], "680000000000000000");
+      assert.equal(sale.considerationAmounts[1], "20000000000000000");
+      assert.equal(sale.considerationAmounts[2], "300000000000000000");
+    });
+
+    it("Excludes zero creator fee for PrivateSaleFinalized", async () => {
+      const event = Foundation.PrivateSaleFinalized.createMockEvent({
+        nftContract: NFT_CONTRACT,
+        tokenId: 322n,
+        seller: SELLER_ADDRESS,
+        buyer: BUYER_ADDRESS,
+        protocolFee: 100000000000000000n, // 0.1
+        creatorFee: 0n,
+        sellerRev: 900000000000000000n, // 0.9
+        deadline: 1900000001n,
+        mockEventData: {
+          block: { number: 18500021, timestamp: 1700000021 },
+          transaction: { hash: "0xtxhash_private_2" },
+          chainId: 1,
+          logIndex: 1,
+          srcAddress: FOUNDATION_CONTRACT,
+        },
+      });
+
+      const db = await Foundation.PrivateSaleFinalized.processEvent({
+        event,
+        mockDb: MockDb.createMockDb(),
+      });
+      const sale = db.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+      assert(sale, "Sale should be created");
+      assert.equal(sale.considerationAmounts.length, 2);
+      assert.equal(sale.considerationRecipients[0], SELLER_ADDRESS);
+      assert.equal(sale.considerationRecipients[1], "0x67Df244584b67E8C51B10aD610aAfFa9a402FdB6");
+    });
+  });
 });

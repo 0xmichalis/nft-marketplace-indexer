@@ -114,3 +114,18 @@ Foundation.OfferAccepted.handler(async ({ event, context }) => {
     sellerRev: event.params.sellerRev.toString(),
   });
 });
+
+Foundation.PrivateSaleFinalized.handler(async ({ event, context }) => {
+  await handleFoundationSale(context, {
+    chainId: event.chainId,
+    transactionHash: event.transaction.hash,
+    blockTimestamp: event.block.timestamp,
+    nftContract: event.params.nftContract,
+    tokenId: event.params.tokenId.toString(),
+    buyer: event.params.buyer,
+    seller: event.params.seller,
+    protocolFee: event.params.protocolFee.toString(),
+    creatorFee: event.params.creatorFee.toString(),
+    sellerRev: event.params.sellerRev.toString(),
+  });
+});
