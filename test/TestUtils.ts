@@ -378,20 +378,6 @@ export function assertOrdersEqual(actual: any, expected: any, message?: string) 
 }
 
 /**
- * Print order summary for debugging
- */
-export function printOrderSummary(order: any) {
-  console.log(`Order ${order.id}:`);
-  console.log(`  Hash: ${order.orderHash}`);
-  console.log(`  Offerer: ${order.offerer}`);
-  console.log(`  Recipient: ${order.recipient}`);
-  console.log(`  Block: ${order.blockNumber}`);
-  console.log(`  Timestamp: ${order.timestamp}`);
-  console.log(`  Offer items: ${order.offerItemTypes.length}`);
-  console.log(`  Consideration items: ${order.considerationItemTypes.length}`);
-}
-
-/**
  * SuperRare test utilities
  */
 export const SUPER_RARE_CONTRACTS = {

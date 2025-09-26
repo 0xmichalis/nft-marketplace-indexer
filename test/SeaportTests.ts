@@ -1023,11 +1023,6 @@ describe("Seaport relationship integrity tests", () => {
         assert.equal(sale.market, "Seaport");
         assert.equal(sale.transactionHash, transactionHash);
 
-        // Verify final classification is correct
-        console.log(
-          `\n✅ Sale classification: hasOfferNfts=${sale.offerItemTypes.some((type: number) => type === 2 || type === 3)}, hasConsiderationNfts=${sale.considerationItemTypes.some((type: number) => type === 2 || type === 3)}`
-        );
-
         // Check account junctions - this is the key fix
         // The buyer should have a buy junction, not a swap junction
         const buyerBuyJunction = finalDb.entities.AccountBuy.get(
@@ -1073,11 +1068,6 @@ describe("Seaport relationship integrity tests", () => {
           sellerSellJunction.sale_id
         );
 
-        // Verify stale junctions have been cleared
-        if (!buyerSwapActive && !sellerSwapActive) {
-          console.log("✅ Stale swap junctions successfully cleared");
-        }
-
         // The correct assertion: swap junctions should be inactive
         assert.equal(buyerSwapActive, false, "Buyer should NOT have an active swap junction");
         assert.equal(sellerSwapActive, false, "Seller should NOT have an active swap junction");
@@ -1085,10 +1075,6 @@ describe("Seaport relationship integrity tests", () => {
         // And the correct junctions should be active
         assert.equal(buyerBuyActive, true, "Buyer should have an active buy junction");
         assert.equal(sellerSellActive, true, "Seller should have an active sell junction");
-
-        if (!buyerSwapActive && !sellerSwapActive && buyerBuyActive && sellerSellActive) {
-          console.log("🎉 Fix successful: Only correct buy/sell classifications remain active");
-        }
 
         // Verify the Account entities were created
         const buyerAccount = finalDb.entities.Account.get(buyer.toLowerCase());
@@ -1107,10 +1093,6 @@ describe("Seaport relationship integrity tests", () => {
           `${saleId}:${nftContract.toLowerCase()}:${tokenId}`
         );
         assert.ok(saleNftJunction, "Sale-NFT junction should be created");
-
-        console.log(
-          "✅ Test passed: Multiple OrderFulfilled events correctly classified as buy/sell, not swap"
-        );
       });
 
       it("should handle legitimate swap scenarios correctly", async () => {
@@ -1217,8 +1199,6 @@ describe("Seaport relationship integrity tests", () => {
         assert.equal(user1SellActive, false, "User1 should not have active sell junction in swap");
         assert.equal(user2BuyActive, false, "User2 should not have active buy junction in swap");
         assert.equal(user2SellActive, false, "User2 should not have active sell junction in swap");
-
-        console.log("✅ Test passed: Legitimate swap correctly classified");
       });
 
       it("should correctly classify complex sale as buy/sell when offerer is sole NFT recipient", async () => {
@@ -1353,13 +1333,6 @@ describe("Seaport relationship integrity tests", () => {
       // Decode the event
       const event = decodeRawOrderFulfilledEvent(rawEvent);
 
-      console.log("Decoded event:");
-      console.log("Offerer:", event.params.offerer);
-      console.log("Recipient:", event.params.recipient);
-      console.log("Zone:", event.params.zone);
-      console.log("Offer items:", event.params.offer);
-      console.log("Consideration items:", event.params.consideration);
-
       // Process the event
       const updatedDb = await Seaport.OrderFulfilled.processEvent({
         event,
@@ -1381,20 +1354,6 @@ describe("Seaport relationship integrity tests", () => {
       const offererSwapJunction = updatedDb.entities.AccountSwap.get(
         `${event.params.offerer.toLowerCase()}:${saleId}`
       );
-
-      console.log("\nClassification results:");
-      console.log("offerer buy junction:", offererBuyJunction ? "EXISTS" : "MISSING");
-      console.log("offerer sell junction:", offererSellJunction ? "EXISTS" : "MISSING");
-      console.log("offerer swap junction:", offererSwapJunction ? "EXISTS" : "MISSING");
-
-      console.log("\nSale structure:");
-      console.log("Offer item types:", sale.offerItemTypes);
-      console.log("Offer tokens:", sale.offerTokens);
-      console.log("Offer amounts:", sale.offerAmounts);
-      console.log("Consideration item types:", sale.considerationItemTypes);
-      console.log("Consideration tokens:", sale.considerationTokens);
-      console.log("Consideration amounts:", sale.considerationAmounts);
-      console.log("Consideration recipients:", sale.considerationRecipients);
 
       // Based on the expectation: offerer should pay WETH to receive NFT
       // This should be classified as a BUY for offerer
