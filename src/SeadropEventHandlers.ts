@@ -18,10 +18,10 @@ Seadrop.SeaDropMint.handler(async ({ event, context }) => {
   await getOrCreateAccount(context, event.params.minter);
 
   // Replace MFC's SeaDropXArtBlocksShim contract with the actual ArtBlocks contract
-  const nftContract =
-    event.params.nftContract === "0x8Cfbe812a0CFEB6775900534389Ca72eD27741e3"
-      ? "0x000000DAb303a194b3F55d4702B24740ad5a2F00"
-      : event.params.nftContract;
+  const isOvertureShim = event.params.nftContract === "0x8Cfbe812a0CFEB6775900534389Ca72eD27741e3";
+  const nftContract = isOvertureShim
+    ? "0x000000DAb303a194b3F55d4702B24740ad5a2F00"
+    : event.params.nftContract;
 
   // Ensure the NFT contract exists for reference
   await getOrCreateNFTContract(context, nftContract);
@@ -33,7 +33,7 @@ Seadrop.SeaDropMint.handler(async ({ event, context }) => {
   if (!contractCounter) {
     contractCounter = {
       id: nftContract,
-      counter: BigInt(0),
+      counter: isOvertureShim ? BigInt(1) : BigInt(0),
     };
   }
 

@@ -655,7 +655,7 @@ describe("Seadrop event tests", () => {
         mockDb: testDb,
       });
 
-      const saleId = `${event.chainId}_${event.transaction.hash}_0`;
+      const saleId = `${event.chainId}_${event.transaction.hash}_1`; // Overture shim starts at token ID 1
       const actualSale = mockDbUpdated.entities.Sale.get(saleId);
 
       // Verify sale was created
@@ -678,9 +678,9 @@ describe("Seadrop event tests", () => {
 
       // Verify NFT token was created for the actual contract
       const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
-        `${ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()}:0`
+        `${ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()}:1`
       );
-      const shimNFTToken = mockDbUpdated.entities.NFTToken.get(`${SHIM_CONTRACT.toLowerCase()}:0`);
+      const shimNFTToken = mockDbUpdated.entities.NFTToken.get(`${SHIM_CONTRACT.toLowerCase()}:1`);
 
       assert(actualNFTToken, "NFT token should be created for actual ArtBlocks contract");
       assert.equal(actualNFTToken.contract_id, ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase());
@@ -690,7 +690,7 @@ describe("Seadrop event tests", () => {
       const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
       const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
       assert.equal(saleNfts.length, 1, "Sale should have one NFT junction");
-      assert.equal(saleNfts[0].nftToken_id, `${ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()}:0`);
+      assert.equal(saleNfts[0].nftToken_id, `${ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()}:1`);
 
       // Verify SeadropCounter was created for the actual contract, not shim
       const actualCounter = mockDbUpdated.entities.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
@@ -698,7 +698,7 @@ describe("Seadrop event tests", () => {
 
       assert(actualCounter, "SeadropCounter should be created for actual ArtBlocks contract");
       assert.equal(actualCounter.id, ACTUAL_ARTBLOCKS_CONTRACT);
-      assert.equal(actualCounter.counter, BigInt(1));
+      assert.equal(actualCounter.counter, BigInt(2)); // Overture shim starts at 1, so after 1 mint it's 2
       assert(!shimCounter, "SeadropCounter should NOT be created for shim contract");
     });
 
@@ -819,20 +819,20 @@ describe("Seadrop event tests", () => {
       // Verify counter was maintained for the actual ArtBlocks contract
       const counter = currentDb.entities.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
       assert(counter, "SeadropCounter should exist for ArtBlocks contract");
-      assert.equal(counter.counter, BigInt(5)); // 2 + 3
+      assert.equal(counter.counter, BigInt(6)); // Overture shim starts at 1, so 1 + 2 + 3 = 6
 
       // Verify all sales use the actual ArtBlocks contract
-      const sale1_0 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_0`);
-      const sale1_1 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_1`);
-      const sale2_0 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_2`);
-      const sale2_1 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_3`);
-      const sale2_2 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_4`);
+      const sale1_0 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_1`); // Overture shim starts at 1
+      const sale1_1 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_2`);
+      const sale2_0 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_3`);
+      const sale2_1 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_4`);
+      const sale2_2 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_5`);
 
-      assert(sale1_0, "First mint sale 0 should exist");
-      assert(sale1_1, "First mint sale 1 should exist");
-      assert(sale2_0, "Second mint sale 2 should exist");
-      assert(sale2_1, "Second mint sale 3 should exist");
-      assert(sale2_2, "Second mint sale 4 should exist");
+      assert(sale1_0, "First mint sale 1 should exist");
+      assert(sale1_1, "First mint sale 2 should exist");
+      assert(sale2_0, "Second mint sale 3 should exist");
+      assert(sale2_1, "Second mint sale 4 should exist");
+      assert(sale2_2, "Second mint sale 5 should exist");
 
       // All sales should use the actual ArtBlocks contract
       assert.equal(sale1_0.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
@@ -841,12 +841,12 @@ describe("Seadrop event tests", () => {
       assert.equal(sale2_1.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
       assert.equal(sale2_2.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
 
-      // Verify token IDs are sequential across both mints
-      assert.equal(sale1_0.offerIdentifiers[0], "0");
-      assert.equal(sale1_1.offerIdentifiers[0], "1");
-      assert.equal(sale2_0.offerIdentifiers[0], "2");
-      assert.equal(sale2_1.offerIdentifiers[0], "3");
-      assert.equal(sale2_2.offerIdentifiers[0], "4");
+      // Verify token IDs are sequential across both mints (starting from 1 for Overture shim)
+      assert.equal(sale1_0.offerIdentifiers[0], "1");
+      assert.equal(sale1_1.offerIdentifiers[0], "2");
+      assert.equal(sale2_0.offerIdentifiers[0], "3");
+      assert.equal(sale2_1.offerIdentifiers[0], "4");
+      assert.equal(sale2_2.offerIdentifiers[0], "5");
     });
   });
 
