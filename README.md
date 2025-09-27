@@ -20,7 +20,7 @@ The following query returns `buys`. Simply replace `buys` with `sells` or `swaps
 
 ```graphql
 query SalesByUser($userAddress: String!) {
-  Account(where: { address: { _eq: $userAddress } }) {
+  Account(where: { address: { _ilike: $userAddress } }) {
     id
     address
     buys(order_by: { sale: { timestamp: desc } }) {
@@ -53,7 +53,7 @@ query SalesByUser($userAddress: String!) {
 
 ```graphql
 query SalesByNFTContract($contractAddress: String!) {
-  NFTContract(where: { address: { _eq: $contractAddress } }) {
+  NFTContract(where: { address: { _ilike: $contractAddress } }) {
     id
     address
     tokens {
@@ -89,7 +89,7 @@ query SalesByNFTContract($contractAddress: String!) {
 ```graphql
 query SalesByNFTToken($contractAddress: String!, $tokenId: String!) {
   NFTToken(
-    where: { contract: { address: { _eq: $contractAddress } }, tokenId: { _eq: $tokenId } }
+    where: { contract: { address: { _ilike: $contractAddress } }, tokenId: { _eq: $tokenId } }
   ) {
     id
     tokenId
