@@ -621,6 +621,235 @@ describe("Seadrop event tests", () => {
     });
   });
 
+  describe("Shim functionality tests", () => {
+    it("Replaces MFC SeaDropXArtBlocksShim with actual ArtBlocks contract", async () => {
+      const testDb = MockDb.createMockDb();
+      const SHIM_CONTRACT = "0x8Cfbe812a0CFEB6775900534389Ca72eD27741e3";
+      const ACTUAL_ARTBLOCKS_CONTRACT = "0x000000DAb303a194b3F55d4702B24740ad5a2F00";
+
+      const event = Seadrop.SeaDropMint.createMockEvent({
+        nftContract: SHIM_CONTRACT, // Using the shim contract address
+        minter: MINTER_ADDRESS,
+        feeRecipient: FEE_RECIPIENT_ADDRESS,
+        payer: PAYER_ADDRESS,
+        quantityMinted: 1n,
+        unitMintPrice: 1000000000000000000n, // 1 ETH
+        feeBps: 250n,
+        dropStageIndex: 0n,
+        mockEventData: {
+          block: {
+            number: 18500015,
+            timestamp: 1700000015,
+            hash: "0xblock138",
+          },
+          transaction: {
+            hash: "0xtxhash_shim_test",
+          },
+          chainId: 1,
+          logIndex: 1,
+        },
+      });
+
+      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
+        event,
+        mockDb: testDb,
+      });
+
+      const saleId = `${event.chainId}_${event.transaction.hash}_0`;
+      const actualSale = mockDbUpdated.entities.Sale.get(saleId);
+
+      // Verify sale was created
+      assert(actualSale, "Sale should be created");
+
+      // Verify the sale uses the actual ArtBlocks contract, not the shim
+      assert.equal(actualSale.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
+      assert.notEqual(actualSale.offerTokens[0], SHIM_CONTRACT);
+
+      // Verify NFT contract entity was created for the actual contract, not shim
+      const actualNFTContract = mockDbUpdated.entities.NFTContract.get(
+        ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()
+      );
+      const shimNFTContract = mockDbUpdated.entities.NFTContract.get(SHIM_CONTRACT.toLowerCase());
+
+      assert(actualNFTContract, "NFT contract should be created for actual ArtBlocks contract");
+      assert.equal(actualNFTContract.id, ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase());
+      assert.equal(actualNFTContract.address, ACTUAL_ARTBLOCKS_CONTRACT);
+      assert(!shimNFTContract, "NFT contract should NOT be created for shim contract");
+
+      // Verify NFT token was created for the actual contract
+      const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
+        `${ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()}:0`
+      );
+      const shimNFTToken = mockDbUpdated.entities.NFTToken.get(`${SHIM_CONTRACT.toLowerCase()}:0`);
+
+      assert(actualNFTToken, "NFT token should be created for actual ArtBlocks contract");
+      assert.equal(actualNFTToken.contract_id, ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase());
+      assert(!shimNFTToken, "NFT token should NOT be created for shim contract");
+
+      // Verify SaleNFT junction uses the actual contract
+      const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+      const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
+      assert.equal(saleNfts.length, 1, "Sale should have one NFT junction");
+      assert.equal(saleNfts[0].nftToken_id, `${ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()}:0`);
+
+      // Verify SeadropCounter was created for the actual contract, not shim
+      const actualCounter = mockDbUpdated.entities.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
+      const shimCounter = mockDbUpdated.entities.SeadropCounter.get(SHIM_CONTRACT);
+
+      assert(actualCounter, "SeadropCounter should be created for actual ArtBlocks contract");
+      assert.equal(actualCounter.id, ACTUAL_ARTBLOCKS_CONTRACT);
+      assert.equal(actualCounter.counter, BigInt(1));
+      assert(!shimCounter, "SeadropCounter should NOT be created for shim contract");
+    });
+
+    it("Does not replace other contracts with ArtBlocks contract", async () => {
+      const testDb = MockDb.createMockDb();
+      const OTHER_CONTRACT = "0x3333333333333333333333333333333333333333";
+      const ACTUAL_ARTBLOCKS_CONTRACT = "0x000000DAb303a194b3F55d4702B24740ad5a2F00";
+
+      const event = Seadrop.SeaDropMint.createMockEvent({
+        nftContract: OTHER_CONTRACT, // Using a different contract address
+        minter: MINTER_ADDRESS,
+        feeRecipient: FEE_RECIPIENT_ADDRESS,
+        payer: PAYER_ADDRESS,
+        quantityMinted: 1n,
+        unitMintPrice: 1000000000000000000n,
+        feeBps: 250n,
+        dropStageIndex: 0n,
+        mockEventData: {
+          block: {
+            number: 18500016,
+            timestamp: 1700000016,
+            hash: "0xblock139",
+          },
+          transaction: {
+            hash: "0xtxhash_other_contract",
+          },
+          chainId: 1,
+          logIndex: 1,
+        },
+      });
+
+      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
+        event,
+        mockDb: testDb,
+      });
+
+      const saleId = `${event.chainId}_${event.transaction.hash}_0`;
+      const actualSale = mockDbUpdated.entities.Sale.get(saleId);
+
+      // Verify sale was created
+      assert(actualSale, "Sale should be created");
+
+      // Verify the sale uses the original contract, not ArtBlocks
+      assert.equal(actualSale.offerTokens[0], OTHER_CONTRACT);
+      assert.notEqual(actualSale.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
+
+      // Verify NFT contract entity was created for the original contract
+      const otherNFTContract = mockDbUpdated.entities.NFTContract.get(OTHER_CONTRACT.toLowerCase());
+      const artblocksNFTContract = mockDbUpdated.entities.NFTContract.get(
+        ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()
+      );
+
+      assert(otherNFTContract, "NFT contract should be created for original contract");
+      assert.equal(otherNFTContract.id, OTHER_CONTRACT.toLowerCase());
+      assert.equal(otherNFTContract.address, OTHER_CONTRACT);
+      assert(!artblocksNFTContract, "NFT contract should NOT be created for ArtBlocks contract");
+
+      // Verify SeadropCounter was created for the original contract
+      const otherCounter = mockDbUpdated.entities.SeadropCounter.get(OTHER_CONTRACT);
+      const artblocksCounter = mockDbUpdated.entities.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
+
+      assert(otherCounter, "SeadropCounter should be created for original contract");
+      assert.equal(otherCounter.id, OTHER_CONTRACT);
+      assert(!artblocksCounter, "SeadropCounter should NOT be created for ArtBlocks contract");
+    });
+
+    it("Handles multiple mints with shim replacement correctly", async () => {
+      const testDb = MockDb.createMockDb();
+      const SHIM_CONTRACT = "0x8Cfbe812a0CFEB6775900534389Ca72eD27741e3";
+      const ACTUAL_ARTBLOCKS_CONTRACT = "0x000000DAb303a194b3F55d4702B24740ad5a2F00";
+
+      // First mint through shim
+      const event1 = Seadrop.SeaDropMint.createMockEvent({
+        nftContract: SHIM_CONTRACT,
+        minter: MINTER_ADDRESS,
+        feeRecipient: FEE_RECIPIENT_ADDRESS,
+        payer: PAYER_ADDRESS,
+        quantityMinted: 2n,
+        unitMintPrice: 1000000000000000000n,
+        feeBps: 250n,
+        dropStageIndex: 0n,
+        mockEventData: {
+          block: { number: 18500017, timestamp: 1700000017, hash: "0xblock140" },
+          transaction: { hash: "0xtxhash_shim_mint1" },
+          chainId: 1,
+          logIndex: 1,
+        },
+      });
+
+      let currentDb = await Seadrop.SeaDropMint.processEvent({
+        event: event1,
+        mockDb: testDb,
+      });
+
+      // Second mint through shim
+      const event2 = Seadrop.SeaDropMint.createMockEvent({
+        nftContract: SHIM_CONTRACT,
+        minter: MINTER_ADDRESS,
+        feeRecipient: FEE_RECIPIENT_ADDRESS,
+        payer: PAYER_ADDRESS,
+        quantityMinted: 3n,
+        unitMintPrice: 1000000000000000000n,
+        feeBps: 250n,
+        dropStageIndex: 0n,
+        mockEventData: {
+          block: { number: 18500018, timestamp: 1700000018, hash: "0xblock141" },
+          transaction: { hash: "0xtxhash_shim_mint2" },
+          chainId: 1,
+          logIndex: 1,
+        },
+      });
+
+      currentDb = await Seadrop.SeaDropMint.processEvent({
+        event: event2,
+        mockDb: currentDb,
+      });
+
+      // Verify counter was maintained for the actual ArtBlocks contract
+      const counter = currentDb.entities.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
+      assert(counter, "SeadropCounter should exist for ArtBlocks contract");
+      assert.equal(counter.counter, BigInt(5)); // 2 + 3
+
+      // Verify all sales use the actual ArtBlocks contract
+      const sale1_0 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_0`);
+      const sale1_1 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_1`);
+      const sale2_0 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_2`);
+      const sale2_1 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_3`);
+      const sale2_2 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_4`);
+
+      assert(sale1_0, "First mint sale 0 should exist");
+      assert(sale1_1, "First mint sale 1 should exist");
+      assert(sale2_0, "Second mint sale 2 should exist");
+      assert(sale2_1, "Second mint sale 3 should exist");
+      assert(sale2_2, "Second mint sale 4 should exist");
+
+      // All sales should use the actual ArtBlocks contract
+      assert.equal(sale1_0.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
+      assert.equal(sale1_1.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
+      assert.equal(sale2_0.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
+      assert.equal(sale2_1.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
+      assert.equal(sale2_2.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
+
+      // Verify token IDs are sequential across both mints
+      assert.equal(sale1_0.offerIdentifiers[0], "0");
+      assert.equal(sale1_1.offerIdentifiers[0], "1");
+      assert.equal(sale2_0.offerIdentifiers[0], "2");
+      assert.equal(sale2_1.offerIdentifiers[0], "3");
+      assert.equal(sale2_2.offerIdentifiers[0], "4");
+    });
+  });
+
   describe("Edge cases and error handling", () => {
     it("Handles same payer and minter correctly", async () => {
       const testDb = MockDb.createMockDb();

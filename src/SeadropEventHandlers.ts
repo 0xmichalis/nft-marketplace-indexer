@@ -17,16 +17,22 @@ Seadrop.SeaDropMint.handler(async ({ event, context }) => {
   await getOrCreateAccount(context, event.params.payer);
   await getOrCreateAccount(context, event.params.minter);
 
+  // Replace MFC's SeaDropXArtBlocksShim contract with the actual ArtBlocks contract
+  const nftContract =
+    event.params.nftContract === "0x8Cfbe812a0CFEB6775900534389Ca72eD27741e3"
+      ? "0x000000DAb303a194b3F55d4702B24740ad5a2F00"
+      : event.params.nftContract;
+
   // Ensure the NFT contract exists for reference
-  await getOrCreateNFTContract(context, event.params.nftContract);
+  await getOrCreateNFTContract(context, nftContract);
 
   // We keep track of the total number of tokens minted for this contract
   // to determine the exact token IDs that were minted by this sale.
-  let contractCounter = await context.SeadropCounter.get(event.params.nftContract);
+  let contractCounter = await context.SeadropCounter.get(nftContract);
 
   if (!contractCounter) {
     contractCounter = {
-      id: event.params.nftContract,
+      id: nftContract,
       counter: BigInt(0),
     };
   }
@@ -59,7 +65,7 @@ Seadrop.SeaDropMint.handler(async ({ event, context }) => {
 
     // Create offer arrays for single NFT
     const offerItemTypes = [2]; // ERC721
-    const offerTokens = [event.params.nftContract];
+    const offerTokens = [nftContract];
     const offerIdentifiers = [tokenId];
     const offerAmounts = ["1"]; // Always 1 for ERC721
 
@@ -98,7 +104,7 @@ Seadrop.SeaDropMint.handler(async ({ event, context }) => {
     // Create NFT junction for this individual token
     const nftItems = [
       {
-        contractAddress: event.params.nftContract,
+        contractAddress: nftContract,
         tokenId,
         itemType: 2,
       },
