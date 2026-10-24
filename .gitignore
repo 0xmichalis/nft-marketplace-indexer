@@ -35,3 +35,6 @@ logs
 build
 .env*
 !.env.*.example
+
+/.envio/
+*.tsbuildinfo

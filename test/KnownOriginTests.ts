@@ -1,56 +1,57 @@
 import assert from "assert";
 
-import { TestHelpers } from "generated";
-const { MockDb, KnownOrigin } = TestHelpers;
+import { createTestIndexer } from "envio";
 
 describe("KnownOrigin BuyNowPurchased event tests", () => {
   // Create mock db
-  const mockDb = MockDb.createMockDb();
+  let mockDb: ReturnType<typeof createTestIndexer>;
+  beforeEach(() => {
+    mockDb = createTestIndexer();
+  });
 
   // Test addresses
   const BUYER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   const SELLER_ADDRESS = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-  const KNOWNORIGIN_CONTRACT = "0xf11ed77fd65840b64602526ddc38311e9923c81b";
+  const KNOWNORIGIN_CONTRACT = "0xf11ED77fD65840b64602526DDC38311E9923c81B";
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
   it("Sale is created correctly for ETH payment", async () => {
     // Creating mock for KnownOrigin BuyNowPurchased event
-    const event = KnownOrigin.BuyNowPurchased.createMockEvent({
-      tokenId: 123n,
-      buyer: BUYER_ADDRESS,
-      currentOwner: SELLER_ADDRESS,
-      price: 1000000000000000000n, // 1 ETH in wei
-      mockEventData: {
-        block: {
-          number: 18500000,
-          timestamp: 1700000000,
-          hash: "0xblock123",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-        },
-        chainId: 1,
-        logIndex: 1,
-        srcAddress: KNOWNORIGIN_CONTRACT,
+    const event = {
+      contract: "KnownOrigin",
+      event: "BuyNowPurchased",
+      params: {
+        tokenId: 123n,
+        buyer: BUYER_ADDRESS,
+        currentOwner: SELLER_ADDRESS,
+        price: 1000000000000000000n,
       },
-    });
+
+      block: {
+        number: 18500000,
+        timestamp: 1700000000,
+        hash: "0xblock123",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+      },
+      chainId: 1,
+      logIndex: 1,
+      srcAddress: KNOWNORIGIN_CONTRACT,
+    } as const;
 
     // Processing the event
-    const mockDbUpdated = await KnownOrigin.BuyNowPurchased.processEvent({
-      event,
-      mockDb,
-    });
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
     // Getting the actual entities from the mock database
-    const actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
-    const actualBuyerAccount = mockDbUpdated.entities.Account.get(BUYER_ADDRESS.toLowerCase());
-    const actualSellerAccount = mockDbUpdated.entities.Account.get(SELLER_ADDRESS.toLowerCase());
-    const actualNFTContract = mockDbUpdated.entities.NFTContract.get(
+    const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    const actualBuyerAccount = await mockDbUpdated.Account.get(BUYER_ADDRESS.toLowerCase());
+    const actualSellerAccount = await mockDbUpdated.Account.get(SELLER_ADDRESS.toLowerCase());
+    const actualNFTContract = await mockDbUpdated.NFTContract.get(
       KNOWNORIGIN_CONTRACT.toLowerCase()
     );
-    const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
+    const actualNFTToken = await mockDbUpdated.NFTToken.get(
       `${KNOWNORIGIN_CONTRACT.toLowerCase()}:123`
     );
 
@@ -64,7 +65,7 @@ describe("KnownOrigin BuyNowPurchased event tests", () => {
     assert.equal(actualSale.recipient_id, BUYER_ADDRESS.toLowerCase());
 
     // Assertions for NFT data via junction entity
-    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
     const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale.id);
     assert.equal(saleNfts.length, 1);
     assert.equal(saleNfts[0].nftToken_id, `${KNOWNORIGIN_CONTRACT.toLowerCase()}:123`);
@@ -113,43 +114,42 @@ describe("KnownOrigin BuyNowPurchased event tests", () => {
 
   it("Sale is created correctly with different price", async () => {
     // Creating mock for KnownOrigin BuyNowPurchased event with different price
-    const event = KnownOrigin.BuyNowPurchased.createMockEvent({
-      tokenId: 456n,
-      buyer: BUYER_ADDRESS,
-      currentOwner: SELLER_ADDRESS,
-      price: 2500000000000000000n, // 2.5 ETH in wei
-      mockEventData: {
-        block: {
-          number: 18500001,
-          timestamp: 1700000001,
-          hash: "0xblock124",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567891",
-        },
-        chainId: 1,
-        logIndex: 2,
-        srcAddress: KNOWNORIGIN_CONTRACT,
+    const event = {
+      contract: "KnownOrigin",
+      event: "BuyNowPurchased",
+      params: {
+        tokenId: 456n,
+        buyer: BUYER_ADDRESS,
+        currentOwner: SELLER_ADDRESS,
+        price: 2500000000000000000n,
       },
-    });
+
+      block: {
+        number: 18500001,
+        timestamp: 1700000001,
+        hash: "0xblock124",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567891",
+      },
+      chainId: 1,
+      logIndex: 2,
+      srcAddress: KNOWNORIGIN_CONTRACT,
+    } as const;
 
     // Processing the event
-    const mockDbUpdated = await KnownOrigin.BuyNowPurchased.processEvent({
-      event,
-      mockDb,
-    });
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
     // Getting the actual entities from the mock database
-    const actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
+    const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     // Assertions for the Sale entity
     assert(actualSale, "Sale should be created");
     assert.equal(actualSale.considerationAmounts[0], "2500000000000000000");
 
     // Check NFT data via junction entity
-    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
     const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale.id);
     assert.equal(saleNfts.length, 1);
     assert.equal(saleNfts[0].nftToken_id, `${KNOWNORIGIN_CONTRACT.toLowerCase()}:456`);
@@ -157,63 +157,64 @@ describe("KnownOrigin BuyNowPurchased event tests", () => {
 
   it("Multiple sales are handled correctly", async () => {
     // First sale
-    const event1 = KnownOrigin.BuyNowPurchased.createMockEvent({
-      tokenId: 789n,
-      buyer: BUYER_ADDRESS,
-      currentOwner: SELLER_ADDRESS,
-      price: 1000000000000000000n,
-      mockEventData: {
-        block: {
-          number: 18500002,
-          timestamp: 1700000002,
-          hash: "0xblock125",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567892",
-        },
-        chainId: 1,
-        logIndex: 3,
-        srcAddress: KNOWNORIGIN_CONTRACT,
+    const event1 = {
+      contract: "KnownOrigin",
+      event: "BuyNowPurchased",
+      params: {
+        tokenId: 789n,
+        buyer: BUYER_ADDRESS,
+        currentOwner: SELLER_ADDRESS,
+        price: 1000000000000000000n,
       },
-    });
+
+      block: {
+        number: 18500002,
+        timestamp: 1700000002,
+        hash: "0xblock125",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567892",
+      },
+      chainId: 1,
+      logIndex: 3,
+      srcAddress: KNOWNORIGIN_CONTRACT,
+    } as const;
 
     // Second sale
-    const event2 = KnownOrigin.BuyNowPurchased.createMockEvent({
-      tokenId: 101112n,
-      buyer: "0xcccccccccccccccccccccccccccccccccccccccc",
-      currentOwner: "0xdddddddddddddddddddddddddddddddddddddddd",
-      price: 5000000000000000000n,
-      mockEventData: {
-        block: {
-          number: 18500003,
-          timestamp: 1700000003,
-          hash: "0xblock126",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567893",
-        },
-        chainId: 1,
-        logIndex: 4,
-        srcAddress: KNOWNORIGIN_CONTRACT,
+    const event2 = {
+      contract: "KnownOrigin",
+      event: "BuyNowPurchased",
+      params: {
+        tokenId: 101112n,
+        buyer: "0xcccccccccccccccccccccccccccccccccccccccc",
+        currentOwner: "0xdddddddddddddddddddddddddddddddddddddddd",
+        price: 5000000000000000000n,
       },
-    });
+
+      block: {
+        number: 18500003,
+        timestamp: 1700000003,
+        hash: "0xblock126",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567893",
+      },
+      chainId: 1,
+      logIndex: 4,
+      srcAddress: KNOWNORIGIN_CONTRACT,
+    } as const;
 
     // Processing both events
-    let mockDbUpdated = await KnownOrigin.BuyNowPurchased.processEvent({
-      event: event1,
-      mockDb,
-    });
+    let mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event1] } } });
 
-    mockDbUpdated = await KnownOrigin.BuyNowPurchased.processEvent({
-      event: event2,
-      mockDb: mockDbUpdated,
-    });
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event2] } } });
 
     // Getting the actual entities from the mock database
-    const actualSale1 = mockDbUpdated.entities.Sale.get(
+    const actualSale1 = await mockDbUpdated.Sale.get(
       `${event1.chainId}_${event1.transaction.hash}`
     );
-    const actualSale2 = mockDbUpdated.entities.Sale.get(
+    const actualSale2 = await mockDbUpdated.Sale.get(
       `${event2.chainId}_${event2.transaction.hash}`
     );
 
@@ -223,7 +224,7 @@ describe("KnownOrigin BuyNowPurchased event tests", () => {
     assert.notEqual(actualSale1.id, actualSale2.id, "Sales should have different IDs");
 
     // Check NFT data via junction entities
-    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
     const saleNfts1 = allSaleNfts.filter((sn) => sn.sale_id === actualSale1.id);
     const saleNfts2 = allSaleNfts.filter((sn) => sn.sale_id === actualSale2.id);
     assert.equal(saleNfts1.length, 1);

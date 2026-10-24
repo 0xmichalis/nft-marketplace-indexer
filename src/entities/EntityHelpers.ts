@@ -2,21 +2,21 @@
  * Helper functions for creating and updating entities with relationships
  */
 import {
-  Account,
-  NFTContract,
-  NFTToken,
-  SaleNFT,
-  AccountBuy,
-  AccountSell,
-  AccountSwap,
-  HandlerContext,
-} from "generated";
+  type Account,
+  type NFTContract,
+  type NFTToken,
+  type SaleNFT,
+  type AccountBuy,
+  type AccountSell,
+  type AccountSwap,
+  type EvmOnEventContext,
+} from "envio";
 
 /**
  * Get or create an Account entity
  */
 export async function getOrCreateAccount(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   address: string
 ): Promise<Account> {
   const accountId = address.toLowerCase();
@@ -37,7 +37,7 @@ export async function getOrCreateAccount(
  * Get or create an NFTContract entity
  */
 export async function getOrCreateNFTContract(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   contractAddress: string
 ): Promise<NFTContract> {
   const contractId = contractAddress.toLowerCase();
@@ -58,7 +58,7 @@ export async function getOrCreateNFTContract(
  * Get or create an NFTToken entity
  */
 export async function getOrCreateNFTToken(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   contractAddress: string,
   tokenId: string
 ): Promise<NFTToken> {
@@ -135,7 +135,7 @@ export function getNFTItems(
  * Create SaleNFT junction entities for a sale
  */
 export async function createSaleNFTJunctions(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   saleId: string,
   nftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }>
 ): Promise<void> {
@@ -161,7 +161,11 @@ export async function createSaleNFTJunctions(
 /**
  * Create an AccountBuy junction for a given account and sale
  */
-export function createAccountBuy(context: HandlerContext, accountId: string, saleId: string): void {
+export function createAccountBuy(
+  context: EvmOnEventContext,
+  accountId: string,
+  saleId: string
+): void {
   const buy: AccountBuy = {
     id: `${accountId}:${saleId}`,
     account_id: accountId,
@@ -174,7 +178,7 @@ export function createAccountBuy(context: HandlerContext, accountId: string, sal
  * Create an AccountSell junction for a given account and sale
  */
 export function createAccountSell(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   accountId: string,
   saleId: string
 ): void {
@@ -190,7 +194,7 @@ export function createAccountSell(
  * Create an AccountSwap junction for a given account and sale
  */
 export function createAccountSwap(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   accountId: string,
   saleId: string
 ): void {
@@ -214,13 +218,13 @@ export function createAccountSwap(
  * - Who receives the payment token = Seller
  */
 export function createAccountJunctionsForSale(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   params: {
     saleId: string;
     offererId: string;
     recipientId: string;
-    offerItemTypes: number[];
-    considerationItemTypes: number[];
+    offerItemTypes: readonly number[];
+    considerationItemTypes: readonly number[];
   }
 ): void {
   const { saleId, offererId, recipientId, offerItemTypes, considerationItemTypes } = params;

@@ -39,6 +39,8 @@ README.md
 
 # Generated artifacts (will be re-generated in builder)
 /generated
+/.envio
+/envio-env.d.ts
 
 # Compose and local config
 podman-compose.yaml

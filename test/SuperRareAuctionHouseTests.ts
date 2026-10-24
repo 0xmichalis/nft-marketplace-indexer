@@ -1,11 +1,13 @@
 import assert from "assert";
 
-import { TestHelpers, Sale } from "generated";
-const { MockDb, SuperRareAuctionHouse } = TestHelpers;
+import { createTestIndexer, type Sale } from "envio";
 
 describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
   // Create mock db
-  const mockDb = MockDb.createMockDb();
+  let mockDb: ReturnType<typeof createTestIndexer>;
+  beforeEach(() => {
+    mockDb = createTestIndexer();
+  });
 
   // Test addresses
   const SELLER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -16,41 +18,40 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
 
   it("Sale is created correctly for auction settlement", async () => {
     // Creating mock for SuperRareAuctionHouse AuctionSettled event
-    const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: NFT_CONTRACT,
-      bidder: BIDDER_ADDRESS,
-      seller: SELLER_ADDRESS,
-      tokenId: 123n,
-      amount: 1000000000000000000n, // 1 ETH in wei
-      mockEventData: {
-        block: {
-          number: 18500000,
-          timestamp: 1700000000,
-          hash: "0xblock123",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-        },
-        chainId: 1,
-        logIndex: 1,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+    const event = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: NFT_CONTRACT,
+        bidder: BIDDER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        tokenId: 123n,
+        amount: 1000000000000000000n,
       },
-    });
+
+      block: {
+        number: 18500000,
+        timestamp: 1700000000,
+        hash: "0xblock123",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+      },
+      chainId: 1,
+      logIndex: 1,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
 
     // Processing the event
-    const mockDbUpdated = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event,
-      mockDb,
-    });
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
     // Getting the actual entities from the mock database
-    const actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
-    const actualSellerAccount = mockDbUpdated.entities.Account.get(SELLER_ADDRESS.toLowerCase());
-    const actualBidderAccount = mockDbUpdated.entities.Account.get(BIDDER_ADDRESS.toLowerCase());
-    const actualNFTContract = mockDbUpdated.entities.NFTContract.get(NFT_CONTRACT.toLowerCase());
-    const actualNFTToken = mockDbUpdated.entities.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:123`);
+    const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    const actualSellerAccount = await mockDbUpdated.Account.get(SELLER_ADDRESS.toLowerCase());
+    const actualBidderAccount = await mockDbUpdated.Account.get(BIDDER_ADDRESS.toLowerCase());
+    const actualNFTContract = await mockDbUpdated.NFTContract.get(NFT_CONTRACT.toLowerCase());
+    const actualNFTToken = await mockDbUpdated.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:123`);
 
     // Creating the expected Sale entity
     const expectedSale: Sale = {
@@ -98,7 +99,7 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
 
     // Testing that the sale references the correct NFT contract and token
     // Check NFT data via junction entity
-    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
     const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
     assert.equal(saleNfts.length, 1, "Sale should have one NFT");
     assert.equal(saleNfts[0].nftToken_id, `${NFT_CONTRACT.toLowerCase()}:123`);
@@ -110,36 +111,35 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
   it("Handles large token IDs correctly", async () => {
     const largeTokenId = 2n ** 255n - 1n; // Very large token ID
 
-    const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: NFT_CONTRACT,
-      bidder: BIDDER_ADDRESS,
-      seller: SELLER_ADDRESS,
-      tokenId: largeTokenId,
-      amount: 1000000000000000000n,
-      mockEventData: {
-        block: {
-          number: 18500002,
-          timestamp: 1700000200,
-          hash: "0xblock125",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567892",
-        },
-        chainId: 1,
-        logIndex: 3,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+    const event = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: NFT_CONTRACT,
+        bidder: BIDDER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        tokenId: largeTokenId,
+        amount: 1000000000000000000n,
       },
-    });
 
-    const mockDbUpdated = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event,
-      mockDb,
-    });
+      block: {
+        number: 18500002,
+        timestamp: 1700000200,
+        hash: "0xblock125",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567892",
+      },
+      chainId: 1,
+      logIndex: 3,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
 
-    const actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
-    const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    const actualNFTToken = await mockDbUpdated.NFTToken.get(
       `${NFT_CONTRACT.toLowerCase()}:${largeTokenId.toString()}`
     );
 
@@ -158,35 +158,34 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
   });
 
   it("Handles zero amount payment", async () => {
-    const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: NFT_CONTRACT,
-      bidder: BIDDER_ADDRESS,
-      seller: SELLER_ADDRESS,
-      tokenId: 789n,
-      amount: 0n, // Zero payment
-      mockEventData: {
-        block: {
-          number: 18500003,
-          timestamp: 1700000300,
-          hash: "0xblock126",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567893",
-        },
-        chainId: 1,
-        logIndex: 4,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+    const event = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: NFT_CONTRACT,
+        bidder: BIDDER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        tokenId: 789n,
+        amount: 0n,
       },
-    });
 
-    const mockDbUpdated = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event,
-      mockDb,
-    });
+      block: {
+        number: 18500003,
+        timestamp: 1700000300,
+        hash: "0xblock126",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567893",
+      },
+      chainId: 1,
+      logIndex: 4,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
 
-    const actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     assert.ok(actualSale, "Sale should be created even with zero payment");
     assert.equal(
@@ -199,35 +198,34 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
   it("Handles very large payment amounts", async () => {
     const largeAmount = 2n ** 128n - 1n; // Very large amount
 
-    const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: NFT_CONTRACT,
-      bidder: BIDDER_ADDRESS,
-      seller: SELLER_ADDRESS,
-      tokenId: 1000n,
-      amount: largeAmount,
-      mockEventData: {
-        block: {
-          number: 18500004,
-          timestamp: 1700000400,
-          hash: "0xblock127",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567894",
-        },
-        chainId: 1,
-        logIndex: 5,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+    const event = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: NFT_CONTRACT,
+        bidder: BIDDER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        tokenId: 1000n,
+        amount: largeAmount,
       },
-    });
 
-    const mockDbUpdated = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event,
-      mockDb,
-    });
+      block: {
+        number: 18500004,
+        timestamp: 1700000400,
+        hash: "0xblock127",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567894",
+      },
+      chainId: 1,
+      logIndex: 5,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
 
-    const actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     assert.ok(actualSale, "Sale should be created for large payment amount");
     assert.equal(
@@ -244,26 +242,29 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
 
     // Create multiple events with different timestamps
     for (let i = 0; i < 3; i++) {
-      const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-        contractAddress: NFT_CONTRACT,
-        bidder: BIDDER_ADDRESS,
-        seller: SELLER_ADDRESS,
-        tokenId: BigInt(2000 + i),
-        amount: 1000000000000000000n * BigInt(i + 1), // Increasing amounts
-        mockEventData: {
-          block: {
-            number: baseBlockNumber + i,
-            timestamp: baseTimestamp + i * 100,
-            hash: `0xblock${baseBlockNumber + i}`,
-          },
-          transaction: {
-            hash: `0xtxhash${i.toString().padStart(64, "0")}`,
-          },
-          chainId: 1,
-          logIndex: 20 + i,
-          srcAddress: AUCTION_HOUSE_CONTRACT,
+      const event = {
+        contract: "SuperRareAuctionHouse",
+        event: "AuctionSettled",
+        params: {
+          contractAddress: NFT_CONTRACT,
+          bidder: BIDDER_ADDRESS,
+          seller: SELLER_ADDRESS,
+          tokenId: BigInt(2000 + i),
+          amount: 1000000000000000000n * BigInt(i + 1),
         },
-      });
+
+        block: {
+          number: baseBlockNumber + i,
+          timestamp: baseTimestamp + i * 100,
+          hash: `0xblock${baseBlockNumber + i}`,
+        },
+        transaction: {
+          hash: `0xtxhash${i.toString().padStart(64, "0")}`,
+        },
+        chainId: 1,
+        logIndex: 20 + i,
+        srcAddress: AUCTION_HOUSE_CONTRACT,
+      } as const;
       events.push(event);
     }
 
@@ -271,17 +272,14 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
 
     // Process all events
     for (const event of events) {
-      currentDb = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-        event,
-        mockDb: currentDb,
-      });
+      await currentDb.process({ chains: { 1: { simulate: [event] } } });
     }
 
     // Verify all sales were created
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
       const saleId = `${event.chainId}_${event.transaction.hash}`;
-      const actualSale = currentDb.entities.Sale.get(saleId);
+      const actualSale = await currentDb.Sale.get(saleId);
 
       assert.ok(actualSale, `Sale ${i + 1} should be created`);
       assert.equal(
@@ -304,26 +302,29 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
 
     // Create multiple events with the same NFT contract but different tokens
     for (let i = 0; i < 3; i++) {
-      const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-        contractAddress: NFT_CONTRACT,
-        bidder: BIDDER_ADDRESS,
-        seller: SELLER_ADDRESS,
-        tokenId: BigInt(3000 + i),
-        amount: 1000000000000000000n,
-        mockEventData: {
-          block: {
-            number: baseBlockNumber + i,
-            timestamp: baseTimestamp + i * 100,
-            hash: `0xblock${baseBlockNumber + i}`,
-          },
-          transaction: {
-            hash: `0xtxhash${i.toString().padStart(64, "0")}`,
-          },
-          chainId: 1,
-          logIndex: 30 + i,
-          srcAddress: AUCTION_HOUSE_CONTRACT,
+      const event = {
+        contract: "SuperRareAuctionHouse",
+        event: "AuctionSettled",
+        params: {
+          contractAddress: NFT_CONTRACT,
+          bidder: BIDDER_ADDRESS,
+          seller: SELLER_ADDRESS,
+          tokenId: BigInt(3000 + i),
+          amount: 1000000000000000000n,
         },
-      });
+
+        block: {
+          number: baseBlockNumber + i,
+          timestamp: baseTimestamp + i * 100,
+          hash: `0xblock${baseBlockNumber + i}`,
+        },
+        transaction: {
+          hash: `0xtxhash${i.toString().padStart(64, "0")}`,
+        },
+        chainId: 1,
+        logIndex: 30 + i,
+        srcAddress: AUCTION_HOUSE_CONTRACT,
+      } as const;
       events.push(event);
     }
 
@@ -331,14 +332,11 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
 
     // Process all events
     for (const event of events) {
-      currentDb = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-        event,
-        mockDb: currentDb,
-      });
+      await currentDb.process({ chains: { 1: { simulate: [event] } } });
     }
 
     // Get the NFT contract after all sales
-    const nftContract = currentDb.entities.NFTContract.get(NFT_CONTRACT.toLowerCase());
+    const nftContract = await currentDb.NFTContract.get(NFT_CONTRACT.toLowerCase());
 
     // Verify the NFT contract exists
     assert.ok(nftContract, "NFT Contract should exist");
@@ -346,7 +344,7 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
     // Verify each token exists
     for (let i = 0; i < 3; i++) {
       const tokenId = (3000 + i).toString();
-      const token = currentDb.entities.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:${tokenId}`);
+      const token = await currentDb.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:${tokenId}`);
 
       assert.ok(token, `Token ${tokenId} should exist`);
     }
@@ -359,37 +357,36 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
     const mixedCaseSeller = "0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa";
     const mixedCaseBidder = "0xBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBb";
 
-    const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: NFT_CONTRACT,
-      bidder: mixedCaseBidder,
-      seller: mixedCaseSeller,
-      tokenId: 123n,
-      amount: 1000000000000000000n,
-      mockEventData: {
-        block: {
-          number: 18500030,
-          timestamp: 1700003000,
-          hash: "0xblock300",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567897",
-        },
-        chainId: 1,
-        logIndex: 30,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+    const event = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: NFT_CONTRACT,
+        bidder: mixedCaseBidder,
+        seller: mixedCaseSeller,
+        tokenId: 123n,
+        amount: 1000000000000000000n,
       },
-    });
 
-    const mockDbUpdated = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event,
-      mockDb,
-    });
+      block: {
+        number: 18500030,
+        timestamp: 1700003000,
+        hash: "0xblock300",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567897",
+      },
+      chainId: 1,
+      logIndex: 30,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
 
-    const actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
-    const actualSellerAccount = mockDbUpdated.entities.Account.get(mixedCaseSeller.toLowerCase());
-    const actualBidderAccount = mockDbUpdated.entities.Account.get(mixedCaseBidder.toLowerCase());
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    const actualSellerAccount = await mockDbUpdated.Account.get(mixedCaseSeller.toLowerCase());
+    const actualBidderAccount = await mockDbUpdated.Account.get(mixedCaseBidder.toLowerCase());
 
     assert.ok(actualSale, "Sale should be created with mixed case addresses");
     assert.equal(
@@ -407,35 +404,34 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
   });
 
   it("Handles different chain IDs", async () => {
-    const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: NFT_CONTRACT,
-      bidder: BIDDER_ADDRESS,
-      seller: SELLER_ADDRESS,
-      tokenId: 123n,
-      amount: 1000000000000000000n,
-      mockEventData: {
-        block: {
-          number: 18500040,
-          timestamp: 1700004000,
-          hash: "0xblock400",
-        },
-        transaction: {
-          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567898",
-        },
-        chainId: 1, // Use chain ID 1 (Ethereum) which is configured
-        logIndex: 40,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+    const event = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: NFT_CONTRACT,
+        bidder: BIDDER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        tokenId: 123n,
+        amount: 1000000000000000000n,
       },
-    });
 
-    const mockDbUpdated = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event,
-      mockDb,
-    });
+      block: {
+        number: 18500040,
+        timestamp: 1700004000,
+        hash: "0xblock400",
+      },
+      transaction: {
+        hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567898",
+      },
+      chainId: 1, // Use chain ID 1 (Ethereum) which is configured
+      logIndex: 40,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
 
-    const actualSale = mockDbUpdated.entities.Sale.get(
-      `${event.chainId}_${event.transaction.hash}`
-    );
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     assert.ok(actualSale, "Sale should be created for different chain ID");
     assert.equal(
@@ -449,29 +445,30 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
     const SELLER = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const BIDDER = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
-    const event = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: NFT_CONTRACT,
-      bidder: BIDDER,
-      seller: SELLER,
-      tokenId: 123n,
-      amount: 1000000000000000000n,
-      mockEventData: {
-        block: { number: 18500050, timestamp: 1700005000, hash: "0xblock500" },
-        transaction: { hash: "0xtx3" },
-        chainId: 1,
-        logIndex: 50,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+    const event = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: NFT_CONTRACT,
+        bidder: BIDDER,
+        seller: SELLER,
+        tokenId: 123n,
+        amount: 1000000000000000000n,
       },
-    });
 
-    const mockDbUpdated = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event,
-      mockDb,
-    });
+      block: { number: 18500050, timestamp: 1700005000, hash: "0xblock500" },
+      transaction: { hash: "0xtx3" },
+      chainId: 1,
+      logIndex: 50,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
 
-    const sale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
-    const sellerAccount = mockDbUpdated.entities.Account.get(SELLER.toLowerCase());
-    const bidderAccount = mockDbUpdated.entities.Account.get(BIDDER.toLowerCase());
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const sale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    const sellerAccount = await mockDbUpdated.Account.get(SELLER.toLowerCase());
+    const bidderAccount = await mockDbUpdated.Account.get(BIDDER.toLowerCase());
 
     // Verify sale references correct accounts
     assert.ok(sale, "Sale should exist");
@@ -492,57 +489,57 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
     const CONTRACT_2 = "0x2222222222222222222222222222222222222222";
 
     // Create sales from different contracts
-    const event1 = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: CONTRACT_1,
-      bidder: BIDDER_ADDRESS,
-      seller: SELLER_ADDRESS,
-      tokenId: 100n,
-      amount: 1000000000000000000n,
-      mockEventData: {
-        block: { number: 18500040, timestamp: 1700004000, hash: "0xblock400" },
-        transaction: { hash: "0xtx1" },
-        chainId: 1,
-        logIndex: 40,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+    const event1 = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: CONTRACT_1,
+        bidder: BIDDER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        tokenId: 100n,
+        amount: 1000000000000000000n,
       },
-    });
 
-    const event2 = SuperRareAuctionHouse.AuctionSettled.createMockEvent({
-      contractAddress: CONTRACT_2,
-      bidder: BIDDER_ADDRESS,
-      seller: SELLER_ADDRESS,
-      tokenId: 200n,
-      amount: 2000000000000000000n,
-      mockEventData: {
-        block: { number: 18500041, timestamp: 1700004100, hash: "0xblock401" },
-        transaction: { hash: "0xtx2" },
-        chainId: 1,
-        logIndex: 41,
-        srcAddress: AUCTION_HOUSE_CONTRACT,
+      block: { number: 18500040, timestamp: 1700004000, hash: "0xblock400" },
+      transaction: { hash: "0xtx1" },
+      chainId: 1,
+      logIndex: 40,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
+
+    const event2 = {
+      contract: "SuperRareAuctionHouse",
+      event: "AuctionSettled",
+      params: {
+        contractAddress: CONTRACT_2,
+        bidder: BIDDER_ADDRESS,
+        seller: SELLER_ADDRESS,
+        tokenId: 200n,
+        amount: 2000000000000000000n,
       },
-    });
+
+      block: { number: 18500041, timestamp: 1700004100, hash: "0xblock401" },
+      transaction: { hash: "0xtx2" },
+      chainId: 1,
+      logIndex: 41,
+      srcAddress: AUCTION_HOUSE_CONTRACT,
+    } as const;
 
     // Process both events
     let currentDb = mockDb;
-    currentDb = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event: event1,
-      mockDb: currentDb,
-    });
-    currentDb = await SuperRareAuctionHouse.AuctionSettled.processEvent({
-      event: event2,
-      mockDb: currentDb,
-    });
+    await currentDb.process({ chains: { 1: { simulate: [event1] } } });
+    await currentDb.process({ chains: { 1: { simulate: [event2] } } });
 
     // Verify both contracts exist
-    const contract1 = currentDb.entities.NFTContract.get(CONTRACT_1.toLowerCase());
-    const contract2 = currentDb.entities.NFTContract.get(CONTRACT_2.toLowerCase());
+    const contract1 = await currentDb.NFTContract.get(CONTRACT_1.toLowerCase());
+    const contract2 = await currentDb.NFTContract.get(CONTRACT_2.toLowerCase());
 
     assert.ok(contract1, "Contract 1 should exist");
     assert.ok(contract2, "Contract 2 should exist");
 
     // Verify each contract has its own token
-    const token1 = currentDb.entities.NFTToken.get(`${CONTRACT_1.toLowerCase()}:100`);
-    const token2 = currentDb.entities.NFTToken.get(`${CONTRACT_2.toLowerCase()}:200`);
+    const token1 = await currentDb.NFTToken.get(`${CONTRACT_1.toLowerCase()}:100`);
+    const token2 = await currentDb.NFTToken.get(`${CONTRACT_2.toLowerCase()}:200`);
 
     assert.ok(token1, "Token 1 should exist");
     assert.ok(token2, "Token 2 should exist");
@@ -555,14 +552,14 @@ describe("SuperRareAuctionHouse AuctionSettled event tests", () => {
     assert.equal(token2.tokenId, "200", "Token 2 should have correct token ID");
 
     // Verify sales reference correct contracts
-    const sale1 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}`);
-    const sale2 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}`);
+    const sale1 = await currentDb.Sale.get(`${event1.chainId}_${event1.transaction.hash}`);
+    const sale2 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}`);
 
     assert.ok(sale1, "Sale 1 should exist");
     assert.ok(sale2, "Sale 2 should exist");
 
     // Check NFT data via junction entities
-    const allSaleNfts = currentDb.entities.SaleNFT.getAll();
+    const allSaleNfts = await currentDb.SaleNFT.getAll();
     const sale1Nfts = allSaleNfts.filter((sn) => sn.sale_id === sale1.id);
     const sale2Nfts = allSaleNfts.filter((sn) => sn.sale_id === sale2.id);
 

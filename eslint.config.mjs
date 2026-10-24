@@ -5,7 +5,7 @@ import configPrettier from "eslint-config-prettier";
 
 export default [
   {
-    ignores: ["dist", "build", "node_modules"],
+    ignores: ["dist", "build", "node_modules", ".envio", "envio-env.d.ts"],
   },
   {
     files: ["**/*.ts"],

@@ -1,4 +1,4 @@
-import { Foundation, Sale, HandlerContext, FoundationAuction } from "generated";
+import { indexer, type Sale, type EvmOnEventContext, type FoundationAuction } from "envio";
 
 import {
   getOrCreateAccount,
@@ -10,7 +10,7 @@ import {
 const FOUNDATION_TREASURY = "0x67Df244584b67E8C51B10aD610aAfFa9a402FdB6";
 
 async function handleFoundationSale(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   params: {
     chainId: number;
     transactionHash: string;
@@ -96,7 +96,25 @@ async function handleFoundationSale(
   createAccountBuy(context, saleEntity.recipient_id, saleId);
 }
 
-Foundation.BuyPriceAccepted.handler(async ({ event, context }) => {
+indexer.onEvent(
+  { contract: "Foundation", event: "BuyPriceAccepted" },
+  async ({ event, context }) => {
+    await handleFoundationSale(context, {
+      chainId: event.chainId,
+      transactionHash: event.transaction.hash,
+      blockTimestamp: event.block.timestamp,
+      nftContract: event.params.nftContract,
+      tokenId: event.params.tokenId.toString(),
+      buyer: event.params.buyer,
+      seller: event.params.seller,
+      protocolFee: event.params.protocolFee.toString(),
+      creatorFee: event.params.creatorFee.toString(),
+      sellerRev: event.params.sellerRev?.toString(),
+    });
+  }
+);
+
+indexer.onEvent({ contract: "Foundation", event: "OfferAccepted" }, async ({ event, context }) => {
   await handleFoundationSale(context, {
     chainId: event.chainId,
     transactionHash: event.transaction.hash,
@@ -111,64 +129,58 @@ Foundation.BuyPriceAccepted.handler(async ({ event, context }) => {
   });
 });
 
-Foundation.OfferAccepted.handler(async ({ event, context }) => {
-  await handleFoundationSale(context, {
-    chainId: event.chainId,
-    transactionHash: event.transaction.hash,
-    blockTimestamp: event.block.timestamp,
-    nftContract: event.params.nftContract,
-    tokenId: event.params.tokenId.toString(),
-    buyer: event.params.buyer,
-    seller: event.params.seller,
-    protocolFee: event.params.protocolFee.toString(),
-    creatorFee: event.params.creatorFee.toString(),
-    sellerRev: event.params.sellerRev?.toString(),
-  });
-});
-
-Foundation.PrivateSaleFinalized.handler(async ({ event, context }) => {
-  await handleFoundationSale(context, {
-    chainId: event.chainId,
-    transactionHash: event.transaction.hash,
-    blockTimestamp: event.block.timestamp,
-    nftContract: event.params.nftContract,
-    tokenId: event.params.tokenId.toString(),
-    buyer: event.params.buyer,
-    seller: event.params.seller,
-    protocolFee: event.params.protocolFee.toString(),
-    creatorFee: event.params.creatorFee.toString(),
-    sellerRev: event.params.sellerRev?.toString(),
-  });
-});
+indexer.onEvent(
+  { contract: "Foundation", event: "PrivateSaleFinalized" },
+  async ({ event, context }) => {
+    await handleFoundationSale(context, {
+      chainId: event.chainId,
+      transactionHash: event.transaction.hash,
+      blockTimestamp: event.block.timestamp,
+      nftContract: event.params.nftContract,
+      tokenId: event.params.tokenId.toString(),
+      buyer: event.params.buyer,
+      seller: event.params.seller,
+      protocolFee: event.params.protocolFee.toString(),
+      creatorFee: event.params.creatorFee.toString(),
+      sellerRev: event.params.sellerRev?.toString(),
+    });
+  }
+);
 
 // Track auctions on creation so we can reference them on finalize
-Foundation.ReserveAuctionCreated.handler(async ({ event, context }) => {
-  const auction: FoundationAuction = {
-    id: event.params.auctionId.toString(),
-    nftContract: event.params.nftContract,
-    tokenId: event.params.tokenId.toString(),
-  };
+indexer.onEvent(
+  { contract: "Foundation", event: "ReserveAuctionCreated" },
+  async ({ event, context }) => {
+    const auction: FoundationAuction = {
+      id: event.params.auctionId.toString(),
+      nftContract: event.params.nftContract,
+      tokenId: event.params.tokenId.toString(),
+    };
 
-  context.FoundationAuction.set(auction);
-});
-
-Foundation.ReserveAuctionFinalized.handler(async ({ event, context }) => {
-  const auctionId = event.params.auctionId.toString();
-  const auction = await context.FoundationAuction.get(auctionId);
-  if (!auction) {
-    return;
+    context.FoundationAuction.set(auction);
   }
+);
 
-  await handleFoundationSale(context, {
-    chainId: event.chainId,
-    transactionHash: event.transaction.hash,
-    blockTimestamp: event.block.timestamp,
-    nftContract: auction.nftContract,
-    tokenId: auction.tokenId,
-    buyer: event.params.bidder,
-    seller: event.params.seller,
-    protocolFee: event.params.protocolFee.toString(),
-    creatorFee: event.params.creatorFee.toString(),
-    sellerRev: event.params.ownerRev.toString(),
-  });
-});
+indexer.onEvent(
+  { contract: "Foundation", event: "ReserveAuctionFinalized" },
+  async ({ event, context }) => {
+    const auctionId = event.params.auctionId.toString();
+    const auction = await context.FoundationAuction.get(auctionId);
+    if (!auction) {
+      return;
+    }
+
+    await handleFoundationSale(context, {
+      chainId: event.chainId,
+      transactionHash: event.transaction.hash,
+      blockTimestamp: event.block.timestamp,
+      nftContract: auction.nftContract,
+      tokenId: auction.tokenId,
+      buyer: event.params.bidder,
+      seller: event.params.seller,
+      protocolFee: event.params.protocolFee.toString(),
+      creatorFee: event.params.creatorFee.toString(),
+      sellerRev: event.params.ownerRev.toString(),
+    });
+  }
+);

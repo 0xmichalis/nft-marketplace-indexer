@@ -1,12 +1,13 @@
 import assert from "assert";
 
-import { TestHelpers } from "generated";
-
-const { MockDb, CryptoPunks } = TestHelpers;
+import { createTestIndexer } from "envio";
 
 describe("CryptoPunks PunkBought event tests", () => {
   // Create mock db
-  const mockDb = MockDb.createMockDb();
+  let mockDb: ReturnType<typeof createTestIndexer>;
+  beforeEach(() => {
+    mockDb = createTestIndexer();
+  });
 
   // Test addresses
   const BUYER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -16,40 +17,42 @@ describe("CryptoPunks PunkBought event tests", () => {
 
   it("Sale is created correctly for PunkBought event", async () => {
     // Creating mock for CryptoPunks PunkBought event
-    const event = CryptoPunks.PunkBought.createMockEvent({
-      tokenId: 123n,
-      value: 1000000000000000000n, // 1 ETH in wei
-      fromAddress: SELLER_ADDRESS,
-      toAddress: BUYER_ADDRESS,
-      mockEventData: {
-        block: {
-          number: 18650000,
-          timestamp: 1715000000,
-        },
-        transaction: {
-          hash: "0xtxhashpunk1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-        },
-        chainId: 1,
-        logIndex: 1,
-        srcAddress: CRYPTOPUNKS_CONTRACT,
+    const event = {
+      contract: "CryptoPunks",
+      event: "PunkBought",
+      params: {
+        tokenId: 123n,
+        value: 1000000000000000000n,
+        // 1 ETH in wei
+        fromAddress: SELLER_ADDRESS,
+        toAddress: BUYER_ADDRESS,
       },
-    });
+
+      block: {
+        number: 18650000,
+        timestamp: 1715000000,
+      },
+      transaction: {
+        hash: "0xtxhashpunk1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+      },
+      chainId: 1,
+      logIndex: 1,
+      srcAddress: CRYPTOPUNKS_CONTRACT,
+    } as const;
 
     // Processing the event
-    const mockDbUpdated = await CryptoPunks.PunkBought.processEvent({
-      event,
-      mockDb,
-    });
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
     // Getting the actual entities from the mock database
     const saleId = `${event.chainId}_${event.transaction.hash}`;
-    const actualSale = mockDbUpdated.entities.Sale.get(saleId);
-    const actualBuyerAccount = mockDbUpdated.entities.Account.get(BUYER_ADDRESS.toLowerCase());
-    const actualSellerAccount = mockDbUpdated.entities.Account.get(SELLER_ADDRESS.toLowerCase());
-    const actualNFTContract = mockDbUpdated.entities.NFTContract.get(
+    const actualSale = await mockDbUpdated.Sale.get(saleId);
+    const actualBuyerAccount = await mockDbUpdated.Account.get(BUYER_ADDRESS.toLowerCase());
+    const actualSellerAccount = await mockDbUpdated.Account.get(SELLER_ADDRESS.toLowerCase());
+    const actualNFTContract = await mockDbUpdated.NFTContract.get(
       CRYPTOPUNKS_CONTRACT.toLowerCase()
     );
-    const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
+    const actualNFTToken = await mockDbUpdated.NFTToken.get(
       `${CRYPTOPUNKS_CONTRACT.toLowerCase()}:123`
     );
 
@@ -63,7 +66,7 @@ describe("CryptoPunks PunkBought event tests", () => {
     assert.equal(actualSale.recipient_id, BUYER_ADDRESS.toLowerCase());
 
     // Check NFT data via junction entity
-    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
     const saleNfts = allSaleNfts.filter((sn: any) => sn.sale_id === saleId);
     assert.equal(saleNfts.length, 1, "Sale should have one NFT");
     assert.equal(saleNfts[0].nftToken_id, `${CRYPTOPUNKS_CONTRACT.toLowerCase()}:123`);

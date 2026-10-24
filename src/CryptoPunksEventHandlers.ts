@@ -1,4 +1,4 @@
-import { CryptoPunks, Sale } from "generated";
+import { indexer, type Sale } from "envio";
 
 import {
   getOrCreateAccount,
@@ -7,7 +7,7 @@ import {
   createAccountSell,
 } from "./entities/EntityHelpers";
 
-CryptoPunks.PunkBought.handler(async ({ event, context }) => {
+indexer.onEvent({ contract: "CryptoPunks", event: "PunkBought" }, async ({ event, context }) => {
   const timestamp = BigInt(event.block.timestamp);
   const saleId = `${event.chainId}_${event.transaction.hash}`;
   const tokenId = event.params.tokenId.toString();
