@@ -1,13 +1,10 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
 name: nft-marketplace-indexer
-output: generated
-unordered_multichain_mode: true
-preload_handlers: true
 field_selection:
   transaction_fields:
     - hash
 
-networks:
+chains:
   - id: 1
     start_block: 0
     rpc:

@@ -1,7 +1,7 @@
-import { TestHelpers } from "generated";
-import { decodeEventLog, parseAbi } from "viem";
+import assert from "assert";
 
-const { Seaport } = TestHelpers;
+import { createTestIndexer } from "envio";
+import { decodeEventLog, parseAbi } from "viem";
 
 /**
  * Utility functions for testing GraphQL queries and indexer functionality
@@ -48,8 +48,8 @@ export function createMockOrderEvent(
     orderHash: string;
     offerer: string;
     recipient: string;
-    offer: Array<[bigint, string, bigint, bigint]>;
-    consideration: Array<[bigint, string, bigint, bigint, string]>;
+    offer: Array<[bigint, `0x${string}`, bigint, bigint]>;
+    consideration: Array<[bigint, `0x${string}`, bigint, bigint, `0x${string}`]>;
     blockNumber: number;
     timestamp: number;
     transactionHash: string;
@@ -64,7 +64,7 @@ export function createMockOrderEvent(
     offer: [
       [BigInt(ITEM_TYPES.ERC721), NFT_CONTRACTS.TEST_NFT_1, 123n, 1n] as [
         bigint,
-        string,
+        `0x${string}`,
         bigint,
         bigint,
       ],
@@ -76,7 +76,7 @@ export function createMockOrderEvent(
         0n,
         1000000000000000000n,
         TEST_ADDRESSES.SELLER_1,
-      ] as [bigint, string, bigint, bigint, string],
+      ] as [bigint, `0x${string}`, bigint, bigint, `0x${string}`],
     ],
     blockNumber: 18500000,
     timestamp: 1700000000,
@@ -87,36 +87,39 @@ export function createMockOrderEvent(
 
   const params = { ...defaults, ...overrides };
 
-  return Seaport.OrderFulfilled.createMockEvent({
-    orderHash: params.orderHash,
-    offerer: params.offerer,
-    zone: TEST_ADDRESSES.ZERO_ADDRESS,
-    recipient: params.recipient,
-    offer: params.offer,
-    consideration: params.consideration,
-    mockEventData: {
-      block: {
-        number: params.blockNumber,
-        timestamp: params.timestamp,
-        hash: `0xblock${params.blockNumber}`,
-      },
-      transaction: {
-        hash: params.transactionHash,
-      },
-      chainId: params.chainId,
-      logIndex: params.logIndex,
+  return {
+    contract: "Seaport",
+    event: "OrderFulfilled",
+    params: {
+      orderHash: params.orderHash,
+      offerer: params.offerer,
+      zone: TEST_ADDRESSES.ZERO_ADDRESS,
+      recipient: params.recipient,
+      offer: params.offer,
+      consideration: params.consideration,
     },
-  });
+
+    block: {
+      number: params.blockNumber,
+      timestamp: params.timestamp,
+      hash: `0xblock${params.blockNumber}`,
+    },
+    transaction: {
+      hash: params.transactionHash,
+    },
+    chainId: params.chainId,
+    logIndex: params.logIndex,
+  } as const;
 }
 
 /**
  * Create a mock NFT sale event (NFT for ETH)
  */
 export function createNFTSaleEvent(params: {
-  nftContract: string;
+  nftContract: `0x${string}`;
   tokenId: bigint;
-  seller: string;
-  buyer: string;
+  seller: `0x${string}`;
+  buyer: `0x${string}`;
   priceWei: bigint;
   blockNumber?: number;
   timestamp?: number;
@@ -137,16 +140,21 @@ export function createNFTSaleEvent(params: {
  * Create a mock bundle sale event (multiple NFTs)
  */
 export function createBundleSaleEvent(params: {
-  nfts: Array<{ contract: string; tokenId: bigint }>;
-  seller: string;
-  buyer: string;
+  nfts: Array<{ contract: `0x${string}`; tokenId: bigint }>;
+  seller: `0x${string}`;
+  buyer: `0x${string}`;
   priceWei: bigint;
   blockNumber?: number;
   timestamp?: number;
 }) {
   const offer = params.nfts.map(
     (nft) =>
-      [BigInt(ITEM_TYPES.ERC721), nft.contract, nft.tokenId, 1n] as [bigint, string, bigint, bigint]
+      [BigInt(ITEM_TYPES.ERC721), nft.contract, nft.tokenId, 1n] as [
+        bigint,
+        `0x${string}`,
+        bigint,
+        bigint,
+      ]
   );
 
   return createMockOrderEvent({
@@ -165,13 +173,13 @@ export function createBundleSaleEvent(params: {
  * Create a mock event with marketplace fees
  */
 export function createEventWithFees(params: {
-  nftContract: string;
+  nftContract: `0x${string}`;
   tokenId: bigint;
-  seller: string;
-  buyer: string;
+  seller: `0x${string}`;
+  buyer: `0x${string}`;
   priceWei: bigint;
   feeWei: bigint;
-  feeRecipient: string;
+  feeRecipient: `0x${string}`;
   blockNumber?: number;
   timestamp?: number;
 }) {
@@ -204,16 +212,8 @@ export function createEventWithFees(params: {
  * Helper to process multiple events and return the updated database
  */
 export async function processEvents(events: any[], initialMockDb: any) {
-  let currentDb = initialMockDb;
-
-  for (const event of events) {
-    currentDb = await Seaport.OrderFulfilled.processEvent({
-      event,
-      mockDb: currentDb,
-    });
-  }
-
-  return currentDb;
+  await initialMockDb.process({ chains: { 1: { simulate: events } } });
+  return initialMockDb;
 }
 
 /**
@@ -365,8 +365,6 @@ export function generateTestEventSeries(
  * Assert that two orders are equal (for testing)
  */
 export function assertOrdersEqual(actual: any, expected: any, message?: string) {
-  const assert = require("assert");
-
   // Helper to normalize orders for comparison
   const normalize = (order: any) => ({
     ...order,
@@ -381,7 +379,7 @@ export function assertOrdersEqual(actual: any, expected: any, message?: string) 
  * SuperRare test utilities
  */
 export const SUPER_RARE_CONTRACTS = {
-  SUPER_RARE_V1: "0x3333333333333333333333333333333333333333",
+  SUPER_RARE_V1: "0x41A322b28D0fF354040e2CbC676F0320d8c8850d",
   SUPER_RARE_BAZAAR: "0x4444444444444444444444444444444444444444",
   TEST_NFT: "0x1111111111111111111111111111111111111111",
 } as const;
@@ -390,7 +388,7 @@ export const SUPER_RARE_CONTRACTS = {
  * Create a mock SuperRareBazaar AcceptOffer event
  */
 export function createSuperRareBazaarAcceptOfferEvent(params: {
-  seller: string;
+  seller: `0x${string}`;
   bidder: string;
   originContract: string;
   tokenId: bigint;
@@ -414,36 +412,37 @@ export function createSuperRareBazaarAcceptOfferEvent(params: {
     chainId = 1,
   } = params;
 
-  const { SuperRareBazaar } = TestHelpers;
-
-  return SuperRareBazaar.AcceptOffer.createMockEvent({
-    seller,
-    bidder,
-    originContract,
-    tokenId,
-    amount,
-    currencyAddress,
-    mockEventData: {
-      block: {
-        number: blockNumber,
-        timestamp,
-        hash: `0xblock${blockNumber}`,
-      },
-      transaction: {
-        hash: transactionHash,
-      },
-      chainId,
-      logIndex: 1,
+  return {
+    contract: "SuperRareBazaar",
+    event: "AcceptOffer",
+    params: {
+      seller,
+      bidder,
+      originContract,
+      tokenId,
+      amount,
+      currencyAddress,
     },
-  });
+
+    block: {
+      number: blockNumber,
+      timestamp,
+      hash: `0xblock${blockNumber}`,
+    },
+    transaction: {
+      hash: transactionHash,
+    },
+    chainId,
+    logIndex: 1,
+  } as const;
 }
 
 /**
  * Create a mock SuperRareV1 Sold event
  */
 export function createSuperRareV1SoldEvent(params: {
-  seller: string;
-  buyer: string;
+  seller: `0x${string}`;
+  buyer: `0x${string}`;
   tokenId: bigint;
   amount: bigint;
   contractAddress: string;
@@ -464,34 +463,35 @@ export function createSuperRareV1SoldEvent(params: {
     chainId = 1,
   } = params;
 
-  const { SuperRareV1 } = TestHelpers;
-
-  return SuperRareV1.Sold.createMockEvent({
-    seller,
-    buyer,
-    tokenId,
-    amount,
-    mockEventData: {
-      block: {
-        number: blockNumber,
-        timestamp,
-        hash: `0xblock${blockNumber}`,
-      },
-      transaction: {
-        hash: transactionHash,
-      },
-      chainId,
-      logIndex: 1,
-      srcAddress: contractAddress,
+  return {
+    contract: "SuperRareV1",
+    event: "Sold",
+    params: {
+      seller,
+      buyer,
+      tokenId,
+      amount,
     },
-  });
+
+    block: {
+      number: blockNumber,
+      timestamp,
+      hash: `0xblock${blockNumber}`,
+    },
+    transaction: {
+      hash: transactionHash,
+    },
+    chainId,
+    logIndex: 1,
+    srcAddress: contractAddress,
+  } as const;
 }
 
 /**
  * Create a mock SuperRareBazaar AcceptOffer event with ETH payment
  */
 export function createSuperRareBazaarETHSale(params: {
-  seller: string;
+  seller: `0x${string}`;
   bidder: string;
   originContract: string;
   tokenId: bigint;
@@ -512,7 +512,7 @@ export function createSuperRareBazaarETHSale(params: {
  * Create a mock SuperRareBazaar AcceptOffer event with ERC20 payment
  */
 export function createSuperRareBazaarERC20Sale(params: {
-  seller: string;
+  seller: `0x${string}`;
   bidder: string;
   originContract: string;
   tokenId: bigint;
@@ -533,8 +533,8 @@ export function createSuperRareBazaarERC20Sale(params: {
  * Create a mock SuperRareV1 Sold event with ETH payment
  */
 export function createSuperRareV1ETHSale(params: {
-  seller: string;
-  buyer: string;
+  seller: `0x${string}`;
+  buyer: `0x${string}`;
   tokenId: bigint;
   amountETH: number; // Amount in ETH (will be converted to wei)
   contractAddress: string;
@@ -553,8 +553,6 @@ export function createSuperRareV1ETHSale(params: {
  * Assert that two SuperRare sales are equal (for unit testing)
  */
 export function assertSuperRareSalesEqual(actual: any, expected: any, message?: string) {
-  const assert = require("assert");
-
   // Helper to normalize sales for comparison
   const normalize = (sale: any) => ({
     ...sale,
@@ -599,7 +597,7 @@ export function decodeRawOrderFulfilledEvent(rawEventData: {
       (item: any) =>
         [BigInt(item.itemType), item.token, BigInt(item.identifier), BigInt(item.amount)] as [
           bigint,
-          string,
+          `0x${string}`,
           bigint,
           bigint,
         ]
@@ -613,29 +611,32 @@ export function decodeRawOrderFulfilledEvent(rawEventData: {
           BigInt(item.identifier),
           BigInt(item.amount),
           item.recipient,
-        ] as [bigint, string, bigint, bigint, string]
+        ] as [bigint, `0x${string}`, bigint, bigint, `0x${string}`]
     );
 
-    return Seaport.OrderFulfilled.createMockEvent({
-      orderHash,
-      offerer,
-      zone,
-      recipient,
-      offer: formattedOffer,
-      consideration: formattedConsideration,
-      mockEventData: {
-        block: {
-          number: blockNumber,
-          timestamp,
-          hash: `0xblock${blockNumber}`,
-        },
-        transaction: {
-          hash: transactionHash,
-        },
-        chainId,
-        logIndex,
+    return {
+      contract: "Seaport",
+      event: "OrderFulfilled",
+      params: {
+        orderHash,
+        offerer,
+        zone,
+        recipient,
+        offer: formattedOffer,
+        consideration: formattedConsideration,
       },
-    });
+
+      block: {
+        number: blockNumber,
+        timestamp,
+        hash: `0xblock${blockNumber}`,
+      },
+      transaction: {
+        hash: transactionHash,
+      },
+      chainId,
+      logIndex,
+    } as const;
   } catch (error) {
     throw new Error(
       `Failed to decode OrderFulfilled event: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -649,13 +650,11 @@ export function processOrderFulfilledEventTest(
   assertions: (event: any, mockDb: any) => void
 ) {
   return async () => {
-    const mockDb = TestHelpers.MockDb.createMockDb();
+    const mockDb = createTestIndexer();
     const event = decodeRawOrderFulfilledEvent(rawEventData);
 
-    const updatedDb = await Seaport.OrderFulfilled.processEvent({
-      event,
-      mockDb,
-    });
+    const updatedDb = mockDb;
+    await updatedDb.process({ chains: { 1: { simulate: [event] } } });
 
     assertions(event, updatedDb);
   };

@@ -1,11 +1,13 @@
 import assert from "assert";
 
-import { TestHelpers } from "generated";
-const { MockDb, Foundation } = TestHelpers;
+import { createTestIndexer } from "envio";
 
 describe("Foundation event tests", () => {
   // Create mock db
-  const mockDb = MockDb.createMockDb();
+  let mockDb: ReturnType<typeof createTestIndexer>;
+  beforeEach(() => {
+    mockDb = createTestIndexer();
+  });
 
   // Test addresses
   const BUYER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -17,51 +19,50 @@ describe("Foundation event tests", () => {
   describe("BuyPriceAccepted event tests", () => {
     it("Sale is created correctly for BuyPriceAccepted event", async () => {
       // Creating mock for Foundation BuyPriceAccepted event
-      const event = Foundation.BuyPriceAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 456n,
-        seller: SELLER_ADDRESS,
-        buyer: BUYER_ADDRESS,
-        protocolFee: 1000000000000000000n, // 1 ETH in wei
-        creatorFee: 25000000000000000n, // 0.025 ETH (2.5%)
-        sellerRev: 975000000000000000n, // 0.975 ETH (97.5%)
-        mockEventData: {
-          block: {
-            number: 18500000,
-            timestamp: 1700000000,
-          },
-          transaction: {
-            hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-          },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event = {
+        contract: "Foundation",
+        event: "BuyPriceAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 456n,
+          seller: SELLER_ADDRESS,
+          buyer: BUYER_ADDRESS,
+          protocolFee: 1000000000000000000n,
+          // 1 ETH in wei
+          creatorFee: 25000000000000000n,
+          // 0.025 ETH (2.5%)
+          sellerRev: 975000000000000000n,
         },
-      });
+
+        block: {
+          number: 18500000,
+          timestamp: 1700000000,
+        },
+        transaction: {
+          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
       // Processing the event
-      const mockDbUpdated = await Foundation.BuyPriceAccepted.processEvent({
-        event,
-        mockDb,
-      });
+      const mockDbUpdated = mockDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
       // Getting the actual entities from the mock database
-      const actualSale = mockDbUpdated.entities.Sale.get(
-        `${event.chainId}_${event.transaction.hash}`
-      );
-      const actualBuyerAccount = mockDbUpdated.entities.Account.get(BUYER_ADDRESS.toLowerCase());
-      const actualSellerAccount = mockDbUpdated.entities.Account.get(SELLER_ADDRESS.toLowerCase());
-      const actualNFTContract = mockDbUpdated.entities.NFTContract.get(NFT_CONTRACT.toLowerCase());
-      const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
-        `${NFT_CONTRACT.toLowerCase()}:456`
-      );
+      const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+      const actualBuyerAccount = await mockDbUpdated.Account.get(BUYER_ADDRESS.toLowerCase());
+      const actualSellerAccount = await mockDbUpdated.Account.get(SELLER_ADDRESS.toLowerCase());
+      const actualNFTContract = await mockDbUpdated.NFTContract.get(NFT_CONTRACT.toLowerCase());
+      const actualNFTToken = await mockDbUpdated.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:456`);
 
       // Verify account junctions were created
       const saleId = `${event.chainId}_${event.transaction.hash}`;
-      const buyerBuyJunction = mockDbUpdated.entities.AccountBuy.get(
+      const buyerBuyJunction = await mockDbUpdated.AccountBuy.get(
         `${BUYER_ADDRESS.toLowerCase()}:${saleId}`
       );
-      const sellerSellJunction = mockDbUpdated.entities.AccountSell.get(
+      const sellerSellJunction = await mockDbUpdated.AccountSell.get(
         `${SELLER_ADDRESS.toLowerCase()}:${saleId}`
       );
 
@@ -75,7 +76,7 @@ describe("Foundation event tests", () => {
       assert.equal(actualSale.recipient_id, BUYER_ADDRESS.toLowerCase());
 
       // Check NFT data via junction entity
-      const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+      const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
       const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
       assert.equal(saleNfts.length, 1, "Sale should have one NFT");
       assert.equal(saleNfts[0].nftToken_id, `${NFT_CONTRACT.toLowerCase()}:456`);
@@ -145,35 +146,37 @@ describe("Foundation event tests", () => {
     });
 
     it("Handles different token IDs correctly", async () => {
-      const event = Foundation.BuyPriceAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 999999n, // Large token ID
-        seller: SELLER_ADDRESS,
-        buyer: BUYER_ADDRESS,
-        protocolFee: 2000000000000000000n, // 2 ETH
-        creatorFee: 50000000000000000n, // 0.05 ETH
-        sellerRev: 1950000000000000000n, // 1.95 ETH
-        mockEventData: {
-          block: { number: 18500001, timestamp: 1700000001 },
-          transaction: { hash: "0xtxhash2" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event = {
+        contract: "Foundation",
+        event: "BuyPriceAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 999999n,
+          // Large token ID
+          seller: SELLER_ADDRESS,
+          buyer: BUYER_ADDRESS,
+          protocolFee: 2000000000000000000n,
+          // 2 ETH
+          creatorFee: 50000000000000000n,
+          // 0.05 ETH
+          sellerRev: 1950000000000000000n,
         },
-      });
 
-      const mockDbUpdated = await Foundation.BuyPriceAccepted.processEvent({
-        event,
-        mockDb: MockDb.createMockDb(),
-      });
+        block: { number: 18500001, timestamp: 1700000001 },
+        transaction: { hash: "0xtxhash2" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const actualSale = mockDbUpdated.entities.Sale.get(
-        `${event.chainId}_${event.transaction.hash}`
-      );
+      const mockDbUpdated = createTestIndexer();
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
       assert(actualSale, "Sale should be created");
       assert.equal(actualSale.offerIdentifiers[0], "999999");
 
-      const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
+      const actualNFTToken = await mockDbUpdated.NFTToken.get(
         `${NFT_CONTRACT.toLowerCase()}:999999`
       );
       assert(actualNFTToken, "NFT token should be created");
@@ -181,31 +184,32 @@ describe("Foundation event tests", () => {
     });
 
     it("Handles zero creator fee correctly (excludes zero entries)", async () => {
-      const event = Foundation.BuyPriceAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 123n,
-        seller: SELLER_ADDRESS,
-        buyer: BUYER_ADDRESS,
-        protocolFee: 1000000000000000000n, // 1 ETH
-        creatorFee: 0n, // No creator fee
-        sellerRev: 1000000000000000000n, // Full amount to seller
-        mockEventData: {
-          block: { number: 18500002, timestamp: 1700000002 },
-          transaction: { hash: "0xtxhash3" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event = {
+        contract: "Foundation",
+        event: "BuyPriceAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 123n,
+          seller: SELLER_ADDRESS,
+          buyer: BUYER_ADDRESS,
+          protocolFee: 1000000000000000000n,
+          // 1 ETH
+          creatorFee: 0n,
+          // No creator fee
+          sellerRev: 1000000000000000000n,
         },
-      });
 
-      const mockDbUpdated = await Foundation.BuyPriceAccepted.processEvent({
-        event,
-        mockDb: MockDb.createMockDb(),
-      });
+        block: { number: 18500002, timestamp: 1700000002 },
+        transaction: { hash: "0xtxhash3" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const actualSale = mockDbUpdated.entities.Sale.get(
-        `${event.chainId}_${event.transaction.hash}`
-      );
+      const mockDbUpdated = createTestIndexer();
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
       assert(actualSale, "Sale should be created");
       // Should only include seller and foundation entries (no zero creator line)
       assert.equal(actualSale.considerationItemTypes.length, 2);
@@ -222,75 +226,77 @@ describe("Foundation event tests", () => {
     });
 
     it("Creates separate account junctions for different sales", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
 
       // First sale
-      const event1 = Foundation.BuyPriceAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 100n,
-        seller: SELLER_ADDRESS,
-        buyer: BUYER_ADDRESS,
-        protocolFee: 1000000000000000000n,
-        creatorFee: 25000000000000000n,
-        sellerRev: 975000000000000000n,
-        mockEventData: {
-          block: { number: 18500003, timestamp: 1700000003 },
-          transaction: { hash: "0xtxhash4" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event1 = {
+        contract: "Foundation",
+        event: "BuyPriceAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 100n,
+          seller: SELLER_ADDRESS,
+          buyer: BUYER_ADDRESS,
+          protocolFee: 1000000000000000000n,
+          creatorFee: 25000000000000000n,
+          sellerRev: 975000000000000000n,
         },
-      });
+
+        block: { number: 18500003, timestamp: 1700000003 },
+        transaction: { hash: "0xtxhash4" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
       // Second sale - different buyer
       const BUYER2_ADDRESS = "0xdddddddddddddddddddddddddddddddddddddddd";
-      const event2 = Foundation.BuyPriceAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 200n,
-        seller: SELLER_ADDRESS,
-        buyer: BUYER2_ADDRESS,
-        protocolFee: 2000000000000000000n,
-        creatorFee: 50000000000000000n,
-        sellerRev: 1950000000000000000n,
-        mockEventData: {
-          block: { number: 18500004, timestamp: 1700000004 },
-          transaction: { hash: "0xtxhash5" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event2 = {
+        contract: "Foundation",
+        event: "BuyPriceAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 200n,
+          seller: SELLER_ADDRESS,
+          buyer: BUYER2_ADDRESS,
+          protocolFee: 2000000000000000000n,
+          creatorFee: 50000000000000000n,
+          sellerRev: 1950000000000000000n,
         },
-      });
+
+        block: { number: 18500004, timestamp: 1700000004 },
+        transaction: { hash: "0xtxhash5" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
       // Process both events
-      const dbAfterFirst = await Foundation.BuyPriceAccepted.processEvent({
-        event: event1,
-        mockDb: testDb,
-      });
+      const dbAfterFirst = testDb;
+      await dbAfterFirst.process({ chains: { 1: { simulate: [event1] } } });
 
-      const dbAfterSecond = await Foundation.BuyPriceAccepted.processEvent({
-        event: event2,
-        mockDb: dbAfterFirst,
-      });
+      const dbAfterSecond = dbAfterFirst;
+      await dbAfterSecond.process({ chains: { 1: { simulate: [event2] } } });
 
       // Verify both sales exist
-      const sale1 = dbAfterSecond.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}`);
-      const sale2 = dbAfterSecond.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}`);
+      const sale1 = await dbAfterSecond.Sale.get(`${event1.chainId}_${event1.transaction.hash}`);
+      const sale2 = await dbAfterSecond.Sale.get(`${event2.chainId}_${event2.transaction.hash}`);
       assert(sale1, "First sale should exist");
       assert(sale2, "Second sale should exist");
 
       // Verify account junctions for first sale
-      const buyer1BuyJunction = dbAfterSecond.entities.AccountBuy.get(
+      const buyer1BuyJunction = await dbAfterSecond.AccountBuy.get(
         `${BUYER_ADDRESS.toLowerCase()}:1_${event1.transaction.hash}`
       );
-      const seller1SellJunction = dbAfterSecond.entities.AccountSell.get(
+      const seller1SellJunction = await dbAfterSecond.AccountSell.get(
         `${SELLER_ADDRESS.toLowerCase()}:1_${event1.transaction.hash}`
       );
 
       // Verify account junctions for second sale
-      const buyer2BuyJunction = dbAfterSecond.entities.AccountBuy.get(
+      const buyer2BuyJunction = await dbAfterSecond.AccountBuy.get(
         `${BUYER2_ADDRESS.toLowerCase()}:1_${event2.transaction.hash}`
       );
-      const seller2SellJunction = dbAfterSecond.entities.AccountSell.get(
+      const seller2SellJunction = await dbAfterSecond.AccountSell.get(
         `${SELLER_ADDRESS.toLowerCase()}:1_${event2.transaction.hash}`
       );
 
@@ -300,7 +306,7 @@ describe("Foundation event tests", () => {
       assert(seller2SellJunction, "Seller should have sell junction for sale 2");
 
       // Verify seller has 2 sell junctions (one for each sale)
-      const allSellJunctions = dbAfterSecond.entities.AccountSell.getAll();
+      const allSellJunctions = await dbAfterSecond.AccountSell.getAll();
       const sellerSellJunctions = allSellJunctions.filter(
         (junction) => junction.account_id === SELLER_ADDRESS.toLowerCase()
       );
@@ -308,29 +314,32 @@ describe("Foundation event tests", () => {
     });
 
     it("Routes creator fee to seller when sellerRev is zero", async () => {
-      const event = Foundation.BuyPriceAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 4242n,
-        seller: SELLER_ADDRESS,
-        buyer: BUYER_ADDRESS,
-        protocolFee: 100000000000000000n, // 0.1 ETH
-        creatorFee: 25000000000000000n, // 0.025 ETH
-        sellerRev: 0n, // no seller revenue
-        mockEventData: {
-          block: { number: 18500006, timestamp: 1700000006 },
-          transaction: { hash: "0xtxhash_seller_rev_zero" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event = {
+        contract: "Foundation",
+        event: "BuyPriceAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 4242n,
+          seller: SELLER_ADDRESS,
+          buyer: BUYER_ADDRESS,
+          protocolFee: 100000000000000000n,
+          // 0.1 ETH
+          creatorFee: 25000000000000000n,
+          // 0.025 ETH
+          sellerRev: 0n,
         },
-      });
 
-      const db = await Foundation.BuyPriceAccepted.processEvent({
-        event,
-        mockDb: MockDb.createMockDb(),
-      });
+        block: { number: 18500006, timestamp: 1700000006 },
+        transaction: { hash: "0xtxhash_seller_rev_zero" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const sale = db.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+      const db = createTestIndexer();
+      await db.process({ chains: { 1: { simulate: [event] } } });
+
+      const sale = await db.Sale.get(`${event.chainId}_${event.transaction.hash}`);
       assert(sale, "Sale should be created");
       // With zero sellerRev, only creator and protocol entries should exist
       assert.equal(sale.considerationAmounts.length, 2);
@@ -344,36 +353,37 @@ describe("Foundation event tests", () => {
 
   describe("OfferAccepted event tests", () => {
     it("Sale is created correctly for OfferAccepted event", async () => {
-      const event = Foundation.OfferAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 789n,
-        buyer: BUYER_ADDRESS,
-        seller: SELLER_ADDRESS,
-        protocolFee: 500000000000000000n, // 0.5 ETH
-        creatorFee: 10000000000000000n, // 0.01 ETH
-        sellerRev: 490000000000000000n, // 0.49 ETH
-        mockEventData: {
-          block: {
-            number: 18500010,
-            timestamp: 1700000010,
-          },
-          transaction: {
-            hash: "0xtxhash_offer_1",
-          },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event = {
+        contract: "Foundation",
+        event: "OfferAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 789n,
+          buyer: BUYER_ADDRESS,
+          seller: SELLER_ADDRESS,
+          protocolFee: 500000000000000000n,
+          // 0.5 ETH
+          creatorFee: 10000000000000000n,
+          // 0.01 ETH
+          sellerRev: 490000000000000000n,
         },
-      });
 
-      const mockDbUpdated = await Foundation.OfferAccepted.processEvent({
-        event,
-        mockDb: MockDb.createMockDb(),
-      });
+        block: {
+          number: 18500010,
+          timestamp: 1700000010,
+        },
+        transaction: {
+          hash: "0xtxhash_offer_1",
+        },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const actualSale = mockDbUpdated.entities.Sale.get(
-        `${event.chainId}_${event.transaction.hash}`
-      );
+      const mockDbUpdated = createTestIndexer();
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
       assert(actualSale, "Sale should be created");
       assert.equal(actualSale.offerer_id, SELLER_ADDRESS.toLowerCase());
       assert.equal(actualSale.recipient_id, BUYER_ADDRESS.toLowerCase());
@@ -386,28 +396,31 @@ describe("Foundation event tests", () => {
     });
 
     it("Excludes zero creator and/or fee entries", async () => {
-      const eventNoCreator = Foundation.OfferAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 111n,
-        buyer: BUYER_ADDRESS,
-        seller: SELLER_ADDRESS,
-        protocolFee: 100000000000000000n, // 0.1 ETH
-        creatorFee: 0n, // zero
-        sellerRev: 900000000000000000n, // 0.9 ETH
-        mockEventData: {
-          block: { number: 18500011, timestamp: 1700000011 },
-          transaction: { hash: "0xtxhash_offer_2" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const eventNoCreator = {
+        contract: "Foundation",
+        event: "OfferAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 111n,
+          buyer: BUYER_ADDRESS,
+          seller: SELLER_ADDRESS,
+          protocolFee: 100000000000000000n,
+          // 0.1 ETH
+          creatorFee: 0n,
+          // zero
+          sellerRev: 900000000000000000n,
         },
-      });
 
-      const dbAfterNoCreator = await Foundation.OfferAccepted.processEvent({
-        event: eventNoCreator,
-        mockDb: MockDb.createMockDb(),
-      });
-      const saleNoCreator = dbAfterNoCreator.entities.Sale.get(
+        block: { number: 18500011, timestamp: 1700000011 },
+        transaction: { hash: "0xtxhash_offer_2" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
+
+      const dbAfterNoCreator = createTestIndexer();
+      await dbAfterNoCreator.process({ chains: { 1: { simulate: [eventNoCreator] } } });
+      const saleNoCreator = await dbAfterNoCreator.Sale.get(
         `${eventNoCreator.chainId}_${eventNoCreator.transaction.hash}`
       );
       assert(saleNoCreator, "Sale should be created");
@@ -415,28 +428,31 @@ describe("Foundation event tests", () => {
       // Ensure no zero entries present
       assert(!saleNoCreator.considerationAmounts.includes("0"));
 
-      const eventNoFees = Foundation.OfferAccepted.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 112n,
-        buyer: BUYER_ADDRESS,
-        seller: SELLER_ADDRESS,
-        protocolFee: 0n, // zero
-        creatorFee: 0n, // zero
-        sellerRev: 1000000000000000000n, // 1 ETH
-        mockEventData: {
-          block: { number: 18500012, timestamp: 1700000012 },
-          transaction: { hash: "0xtxhash_offer_3" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const eventNoFees = {
+        contract: "Foundation",
+        event: "OfferAccepted",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 112n,
+          buyer: BUYER_ADDRESS,
+          seller: SELLER_ADDRESS,
+          protocolFee: 0n,
+          // zero
+          creatorFee: 0n,
+          // zero
+          sellerRev: 1000000000000000000n,
         },
-      });
 
-      const dbAfterNoFees = await Foundation.OfferAccepted.processEvent({
-        event: eventNoFees,
-        mockDb: dbAfterNoCreator,
-      });
-      const saleNoFees = dbAfterNoFees.entities.Sale.get(
+        block: { number: 18500012, timestamp: 1700000012 },
+        transaction: { hash: "0xtxhash_offer_3" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
+
+      const dbAfterNoFees = dbAfterNoCreator;
+      await dbAfterNoFees.process({ chains: { 1: { simulate: [eventNoFees] } } });
+      const saleNoFees = await dbAfterNoFees.Sale.get(
         `${eventNoFees.chainId}_${eventNoFees.transaction.hash}`
       );
       assert(saleNoFees, "Sale should be created");
@@ -448,30 +464,34 @@ describe("Foundation event tests", () => {
 
   describe("PrivateSaleFinalized event tests", () => {
     it("Sale is created correctly for PrivateSaleFinalized event", async () => {
-      const event = Foundation.PrivateSaleFinalized.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 321n,
-        seller: SELLER_ADDRESS,
-        buyer: BUYER_ADDRESS,
-        protocolFee: 300000000000000000n, // 0.3 ETH
-        creatorFee: 20000000000000000n, // 0.02 ETH
-        sellerRev: 680000000000000000n, // 0.68 ETH
-        deadline: 1900000000n,
-        mockEventData: {
-          block: { number: 18500020, timestamp: 1700000020 },
-          transaction: { hash: "0xtxhash_private_1" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event = {
+        contract: "Foundation",
+        event: "PrivateSaleFinalized",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 321n,
+          seller: SELLER_ADDRESS,
+          buyer: BUYER_ADDRESS,
+          protocolFee: 300000000000000000n,
+          // 0.3 ETH
+          creatorFee: 20000000000000000n,
+          // 0.02 ETH
+          sellerRev: 680000000000000000n,
+          // 0.68 ETH
+          deadline: 1900000000n,
         },
-      });
 
-      const mockDbUpdated = await Foundation.PrivateSaleFinalized.processEvent({
-        event,
-        mockDb: MockDb.createMockDb(),
-      });
+        block: { number: 18500020, timestamp: 1700000020 },
+        transaction: { hash: "0xtxhash_private_1" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const sale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+      const mockDbUpdated = createTestIndexer();
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const sale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
       assert(sale, "Sale should be created");
       assert.equal(sale.offerTokens[0], NFT_CONTRACT);
       assert.equal(sale.offerIdentifiers[0], "321");
@@ -484,29 +504,32 @@ describe("Foundation event tests", () => {
     });
 
     it("Excludes zero creator fee for PrivateSaleFinalized", async () => {
-      const event = Foundation.PrivateSaleFinalized.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        tokenId: 322n,
-        seller: SELLER_ADDRESS,
-        buyer: BUYER_ADDRESS,
-        protocolFee: 100000000000000000n, // 0.1
-        creatorFee: 0n,
-        sellerRev: 900000000000000000n, // 0.9
-        deadline: 1900000001n,
-        mockEventData: {
-          block: { number: 18500021, timestamp: 1700000021 },
-          transaction: { hash: "0xtxhash_private_2" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event = {
+        contract: "Foundation",
+        event: "PrivateSaleFinalized",
+        params: {
+          nftContract: NFT_CONTRACT,
+          tokenId: 322n,
+          seller: SELLER_ADDRESS,
+          buyer: BUYER_ADDRESS,
+          protocolFee: 100000000000000000n,
+          // 0.1
+          creatorFee: 0n,
+          sellerRev: 900000000000000000n,
+          // 0.9
+          deadline: 1900000001n,
         },
-      });
 
-      const db = await Foundation.PrivateSaleFinalized.processEvent({
-        event,
-        mockDb: MockDb.createMockDb(),
-      });
-      const sale = db.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+        block: { number: 18500021, timestamp: 1700000021 },
+        transaction: { hash: "0xtxhash_private_2" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
+
+      const db = createTestIndexer();
+      await db.process({ chains: { 1: { simulate: [event] } } });
+      const sale = await db.Sale.get(`${event.chainId}_${event.transaction.hash}`);
       assert(sale, "Sale should be created");
       assert.equal(sale.considerationAmounts.length, 2);
       assert.equal(sale.considerationRecipients[0], SELLER_ADDRESS);
@@ -517,29 +540,30 @@ describe("Foundation event tests", () => {
   describe("Reserve auction events", () => {
     it("Stores auction mapping on ReserveAuctionCreated", async () => {
       const auctionId = 1001n;
-      const event = Foundation.ReserveAuctionCreated.createMockEvent({
-        seller: SELLER_ADDRESS,
-        nftContract: NFT_CONTRACT,
-        tokenId: 42n,
-        duration: 86400n,
-        extensionDuration: 300n,
-        reservePrice: 100000000000000000n,
-        auctionId,
-        mockEventData: {
-          block: { number: 18600000, timestamp: 1701000000 },
-          transaction: { hash: "0xtxhash_reserve_created" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const event = {
+        contract: "Foundation",
+        event: "ReserveAuctionCreated",
+        params: {
+          seller: SELLER_ADDRESS,
+          nftContract: NFT_CONTRACT,
+          tokenId: 42n,
+          duration: 86400n,
+          extensionDuration: 300n,
+          reservePrice: 100000000000000000n,
+          auctionId,
         },
-      });
 
-      const db = await Foundation.ReserveAuctionCreated.processEvent({
-        event,
-        mockDb: MockDb.createMockDb(),
-      });
+        block: { number: 18600000, timestamp: 1701000000 },
+        transaction: { hash: "0xtxhash_reserve_created" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const auction = db.entities.FoundationAuction.get(auctionId.toString());
+      const db = createTestIndexer();
+      await db.process({ chains: { 1: { simulate: [event] } } });
+
+      const auction = await db.FoundationAuction.get(auctionId.toString());
       assert(auction, "FoundationAuction should be stored");
       assert.equal(auction.id, auctionId.toString());
       assert.equal(auction.nftContract, NFT_CONTRACT);
@@ -548,51 +572,55 @@ describe("Foundation event tests", () => {
 
     it("Creates sale on ReserveAuctionFinalized using stored mapping", async () => {
       const auctionId = 2002n;
-      const created = Foundation.ReserveAuctionCreated.createMockEvent({
-        seller: SELLER_ADDRESS,
-        nftContract: NFT_CONTRACT,
-        tokenId: 777n,
-        duration: 7200n,
-        extensionDuration: 60n,
-        reservePrice: 500000000000000000n,
-        auctionId,
-        mockEventData: {
-          block: { number: 18600010, timestamp: 1701000010 },
-          transaction: { hash: "0xtxhash_reserve_created_2" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const created = {
+        contract: "Foundation",
+        event: "ReserveAuctionCreated",
+        params: {
+          seller: SELLER_ADDRESS,
+          nftContract: NFT_CONTRACT,
+          tokenId: 777n,
+          duration: 7200n,
+          extensionDuration: 60n,
+          reservePrice: 500000000000000000n,
+          auctionId,
         },
-      });
 
-      const dbAfterCreate = await Foundation.ReserveAuctionCreated.processEvent({
-        event: created,
-        mockDb: MockDb.createMockDb(),
-      });
+        block: { number: 18600010, timestamp: 1701000010 },
+        transaction: { hash: "0xtxhash_reserve_created_2" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const finalized = Foundation.ReserveAuctionFinalized.createMockEvent({
-        auctionId,
-        seller: SELLER_ADDRESS,
-        bidder: BUYER_ADDRESS,
-        protocolFee: 100000000000000000n, // 0.1
-        creatorFee: 20000000000000000n, // 0.02
-        ownerRev: 700000000000000000n, // 0.7
-        mockEventData: {
-          block: { number: 18600011, timestamp: 1701000011 },
-          transaction: { hash: "0xtxhash_reserve_finalized_2" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const dbAfterCreate = createTestIndexer();
+      await dbAfterCreate.process({ chains: { 1: { simulate: [created] } } });
+
+      const finalized = {
+        contract: "Foundation",
+        event: "ReserveAuctionFinalized",
+        params: {
+          auctionId,
+          seller: SELLER_ADDRESS,
+          bidder: BUYER_ADDRESS,
+          protocolFee: 100000000000000000n,
+          // 0.1
+          creatorFee: 20000000000000000n,
+          // 0.02
+          ownerRev: 700000000000000000n,
         },
-      });
 
-      const dbAfterFinalize = await Foundation.ReserveAuctionFinalized.processEvent({
-        event: finalized,
-        mockDb: dbAfterCreate,
-      });
+        block: { number: 18600011, timestamp: 1701000011 },
+        transaction: { hash: "0xtxhash_reserve_finalized_2" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
+
+      const dbAfterFinalize = dbAfterCreate;
+      await dbAfterFinalize.process({ chains: { 1: { simulate: [finalized] } } });
 
       const saleId = `1_${finalized.transaction.hash}`;
-      const sale = dbAfterFinalize.entities.Sale.get(saleId);
+      const sale = await dbAfterFinalize.Sale.get(saleId);
       assert(sale, "Sale should be created on finalize");
       assert.equal(sale.offerTokens[0], NFT_CONTRACT);
       assert.equal(sale.offerIdentifiers[0], "777");
@@ -607,50 +635,54 @@ describe("Foundation event tests", () => {
 
     it("Routes creator fee to seller when ownerRev is zero on finalize", async () => {
       const auctionId = 3003n;
-      const created = Foundation.ReserveAuctionCreated.createMockEvent({
-        seller: SELLER_ADDRESS,
-        nftContract: NFT_CONTRACT,
-        tokenId: 808n,
-        duration: 7200n,
-        extensionDuration: 60n,
-        reservePrice: 500000000000000000n,
-        auctionId,
-        mockEventData: {
-          block: { number: 18600020, timestamp: 1701000020 },
-          transaction: { hash: "0xtxhash_reserve_created_3" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const created = {
+        contract: "Foundation",
+        event: "ReserveAuctionCreated",
+        params: {
+          seller: SELLER_ADDRESS,
+          nftContract: NFT_CONTRACT,
+          tokenId: 808n,
+          duration: 7200n,
+          extensionDuration: 60n,
+          reservePrice: 500000000000000000n,
+          auctionId,
         },
-      });
 
-      const dbAfterCreate = await Foundation.ReserveAuctionCreated.processEvent({
-        event: created,
-        mockDb: MockDb.createMockDb(),
-      });
+        block: { number: 18600020, timestamp: 1701000020 },
+        transaction: { hash: "0xtxhash_reserve_created_3" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const finalized = Foundation.ReserveAuctionFinalized.createMockEvent({
-        auctionId,
-        seller: SELLER_ADDRESS,
-        bidder: BUYER_ADDRESS,
-        protocolFee: 100000000000000000n, // 0.1
-        creatorFee: 20000000000000000n, // 0.02
-        ownerRev: 0n, // zero seller revenue
-        mockEventData: {
-          block: { number: 18600021, timestamp: 1701000021 },
-          transaction: { hash: "0xtxhash_reserve_finalized_3" },
-          chainId: 1,
-          logIndex: 1,
-          srcAddress: FOUNDATION_CONTRACT,
+      const dbAfterCreate = createTestIndexer();
+      await dbAfterCreate.process({ chains: { 1: { simulate: [created] } } });
+
+      const finalized = {
+        contract: "Foundation",
+        event: "ReserveAuctionFinalized",
+        params: {
+          auctionId,
+          seller: SELLER_ADDRESS,
+          bidder: BUYER_ADDRESS,
+          protocolFee: 100000000000000000n,
+          // 0.1
+          creatorFee: 20000000000000000n,
+          // 0.02
+          ownerRev: 0n,
         },
-      });
 
-      const dbAfterFinalize = await Foundation.ReserveAuctionFinalized.processEvent({
-        event: finalized,
-        mockDb: dbAfterCreate,
-      });
+        block: { number: 18600021, timestamp: 1701000021 },
+        transaction: { hash: "0xtxhash_reserve_finalized_3" },
+        chainId: 1,
+        logIndex: 1,
+        srcAddress: FOUNDATION_CONTRACT,
+      } as const;
 
-      const sale = dbAfterFinalize.entities.Sale.get(`1_${finalized.transaction.hash}`);
+      const dbAfterFinalize = dbAfterCreate;
+      await dbAfterFinalize.process({ chains: { 1: { simulate: [finalized] } } });
+
+      const sale = await dbAfterFinalize.Sale.get(`1_${finalized.transaction.hash}`);
       assert(sale, "Sale should be created on finalize");
       // Only creator and protocol entries
       assert.equal(sale.considerationAmounts.length, 2);

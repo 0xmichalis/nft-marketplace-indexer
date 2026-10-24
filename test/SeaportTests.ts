@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { TestHelpers } from "generated";
+import { createTestIndexer } from "envio";
 
 import {
   decodeRawOrderFulfilledEvent,
@@ -10,44 +10,51 @@ import {
   NFT_CONTRACTS,
   ITEM_TYPES,
 } from "./TestUtils";
-const { MockDb, Seaport } = TestHelpers;
 
 describe("Seaport contract OrderFulfilled event tests", () => {
   // Create mock db
-  const mockDb = MockDb.createMockDb();
+  let mockDb: ReturnType<typeof createTestIndexer>;
+  beforeEach(() => {
+    mockDb = createTestIndexer();
+  });
 
   // Creating mock for Seaport contract OrderFulfilled event
-  const event = Seaport.OrderFulfilled.createMockEvent({
-    offerer: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    recipient: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    offer: [
-      [2n, "0x1111111111111111111111111111111111111111", 100n, 1n] as [
-        bigint,
-        string,
-        bigint,
-        bigint,
-      ], // ERC721 NFT
-    ],
-    consideration: [
-      [
-        0n,
-        "0x0000000000000000000000000000000000000000",
-        0n,
-        1000000000000000000n,
-        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      ] as [bigint, string, bigint, bigint, string], // ETH payment
-    ],
-  });
+  const event = {
+    contract: "Seaport",
+    event: "OrderFulfilled",
+    params: {
+      offerer: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      recipient: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      offer: [
+        [2n, "0x1111111111111111111111111111111111111111", 100n, 1n] as [
+          bigint,
+          `0x${string}`,
+          bigint,
+          bigint,
+        ], // ERC721 NFT
+      ],
+      consideration: [
+        [
+          0n,
+          "0x0000000000000000000000000000000000000000",
+          0n,
+          1000000000000000000n,
+          "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ] as [bigint, `0x${string}`, bigint, bigint, `0x${string}`], // ETH payment
+      ],
+    },
+
+    chainId: 1,
+    transaction: { hash: "0xtxhash123" },
+  } as const;
 
   it("Sale is created correctly", async () => {
     // Processing the event
-    const mockDbUpdated = await Seaport.OrderFulfilled.processEvent({
-      event,
-      mockDb,
-    });
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
     // Getting the actual entity from the mock database
-    let actualSale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    let actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     // Verify the sale exists and has the basic structure
     assert.ok(actualSale, "Sale should exist");
@@ -116,13 +123,11 @@ describe("Seaport contract OrderFulfilled event tests", () => {
 
   it("Offer arrays are populated correctly in OrderFulfilled", async () => {
     // Processing the event
-    const mockDbUpdated = await Seaport.OrderFulfilled.processEvent({
-      event,
-      mockDb,
-    });
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
     // Getting the actual entity from the mock database
-    let actualSale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    let actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     // Verify offer arrays have correct lengths (1 NFT in offer, no consideration items moved to offers)
     assert.equal(
@@ -170,13 +175,11 @@ describe("Seaport contract OrderFulfilled event tests", () => {
 
   it("Consideration arrays are populated correctly in OrderFulfilled", async () => {
     // Processing the event
-    const mockDbUpdated = await Seaport.OrderFulfilled.processEvent({
-      event,
-      mockDb,
-    });
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
     // Getting the actual entity from the mock database
-    let actualSale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    let actualSale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
     // Verify consideration arrays have correct lengths (1 ETH consideration, no items moved to offers)
     assert.equal(
@@ -238,10 +241,10 @@ describe("Seaport contract OrderFulfilled event tests", () => {
 });
 
 describe("Seaport ERC1155 tests", () => {
-  let mockDb: any;
+  let mockDb: ReturnType<typeof createTestIndexer>;
 
   beforeEach(() => {
-    mockDb = MockDb.createMockDb();
+    mockDb = createTestIndexer();
   });
 
   it("Creates sale for single ERC1155 offer (amount > 1)", async () => {
@@ -251,33 +254,38 @@ describe("Seaport ERC1155 tests", () => {
     const TOKEN_ID = 777n;
     const AMOUNT = 5n; // ERC1155 quantity
 
-    const event = Seaport.OrderFulfilled.createMockEvent({
-      orderHash: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-      offerer: OFFERER,
-      zone: "0x0000000000000000000000000000000000000000",
-      recipient: RECIPIENT,
-      offer: [[3n, NFT_CONTRACT, TOKEN_ID, AMOUNT] as [bigint, string, bigint, bigint]], // ERC1155
-      consideration: [
-        [0n, "0x0000000000000000000000000000000000000000", 0n, 4200000000000000000n, OFFERER] as [
-          bigint,
-          string,
-          bigint,
-          bigint,
-          string,
+    const event = {
+      contract: "Seaport",
+      event: "OrderFulfilled",
+      params: {
+        orderHash: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        offerer: OFFERER,
+        zone: "0x0000000000000000000000000000000000000000",
+        recipient: RECIPIENT,
+        offer: [[3n, NFT_CONTRACT, TOKEN_ID, AMOUNT] as [bigint, `0x${string}`, bigint, bigint]],
+        // ERC1155
+        consideration: [
+          [0n, "0x0000000000000000000000000000000000000000", 0n, 4200000000000000000n, OFFERER] as [
+            bigint,
+            `0x${string}`,
+            bigint,
+            bigint,
+            `0x${string}`,
+          ],
         ],
-      ],
-      mockEventData: {
-        block: { number: 18600000, timestamp: 1710000000, hash: "0xblockerc1155a" },
-        transaction: { hash: "0xtxerc1155a" },
-        chainId: 1,
-        logIndex: 10,
       },
-    });
 
-    const updatedDb = await Seaport.OrderFulfilled.processEvent({ event, mockDb });
+      block: { number: 18600000, timestamp: 1710000000, hash: "0xblockerc1155a" },
+      transaction: { hash: "0xtxerc1155a" },
+      chainId: 1,
+      logIndex: 10,
+    } as const;
+
+    const updatedDb = mockDb;
+    await updatedDb.process({ chains: { 1: { simulate: [event] } } });
 
     const saleId = `${event.chainId}_${event.transaction.hash}`;
-    const sale = updatedDb.entities.Sale.get(saleId);
+    const sale = await updatedDb.Sale.get(saleId);
     assert.ok(sale, "Sale should be created");
 
     // Validate offer arrays captured ERC1155 correctly
@@ -287,7 +295,7 @@ describe("Seaport ERC1155 tests", () => {
     assert.equal(sale.offerAmounts[0], AMOUNT.toString(), "Amount should match ERC1155 quantity");
 
     // Validate SaleNFT junction exists
-    const saleNfts = updatedDb.entities.SaleNFT.getAll().filter((sn: any) => sn.sale_id === saleId);
+    const saleNfts = (await updatedDb.SaleNFT.getAll()).filter((sn: any) => sn.sale_id === saleId);
     assert.equal(saleNfts.length, 1, "One NFT junction expected");
     assert.equal(
       saleNfts[0].nftToken_id,
@@ -296,7 +304,7 @@ describe("Seaport ERC1155 tests", () => {
     );
 
     // Validate token entity
-    const nftToken = updatedDb.entities.NFTToken.get(
+    const nftToken = await updatedDb.NFTToken.get(
       `${NFT_CONTRACT.toLowerCase()}:${TOKEN_ID.toString()}`
     );
     assert.ok(nftToken, "NFTToken should exist");
@@ -308,36 +316,40 @@ describe("Seaport ERC1155 tests", () => {
     const NFT721 = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const NFT1155 = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
-    const event = Seaport.OrderFulfilled.createMockEvent({
-      orderHash: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-      offerer: OFFERER,
-      zone: "0x0000000000000000000000000000000000000000",
-      recipient: RECIPIENT,
-      offer: [
-        [2n, NFT721, 101n, 1n] as [bigint, string, bigint, bigint], // ERC721
-        [3n, NFT1155, 202n, 3n] as [bigint, string, bigint, bigint], // ERC1155 amount 3
-      ],
-      consideration: [
-        [0n, "0x0000000000000000000000000000000000000000", 0n, 1500000000000000000n, OFFERER] as [
-          bigint,
-          string,
-          bigint,
-          bigint,
-          string,
+    const event = {
+      contract: "Seaport",
+      event: "OrderFulfilled",
+      params: {
+        orderHash: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        offerer: OFFERER,
+        zone: "0x0000000000000000000000000000000000000000",
+        recipient: RECIPIENT,
+        offer: [
+          [2n, NFT721, 101n, 1n] as [bigint, `0x${string}`, bigint, bigint], // ERC721
+          [3n, NFT1155, 202n, 3n] as [bigint, `0x${string}`, bigint, bigint], // ERC1155 amount 3
         ],
-      ],
-      mockEventData: {
-        block: { number: 18600001, timestamp: 1710000100, hash: "0xblockerc1155b" },
-        transaction: { hash: "0xtxerc1155b" },
-        chainId: 1,
-        logIndex: 11,
+        consideration: [
+          [0n, "0x0000000000000000000000000000000000000000", 0n, 1500000000000000000n, OFFERER] as [
+            bigint,
+            `0x${string}`,
+            bigint,
+            bigint,
+            `0x${string}`,
+          ],
+        ],
       },
-    });
 
-    const updatedDb = await Seaport.OrderFulfilled.processEvent({ event, mockDb });
+      block: { number: 18600001, timestamp: 1710000100, hash: "0xblockerc1155b" },
+      transaction: { hash: "0xtxerc1155b" },
+      chainId: 1,
+      logIndex: 11,
+    } as const;
+
+    const updatedDb = mockDb;
+    await updatedDb.process({ chains: { 1: { simulate: [event] } } });
 
     const saleId = `${event.chainId}_${event.transaction.hash}`;
-    const sale = updatedDb.entities.Sale.get(saleId);
+    const sale = await updatedDb.Sale.get(saleId);
     assert.ok(sale, "Sale should be created");
 
     // Offer arrays lengths and content
@@ -351,7 +363,7 @@ describe("Seaport ERC1155 tests", () => {
     assert.equal(sale.offerAmounts[1], "3");
 
     // Junctions for both tokens
-    const saleNfts = updatedDb.entities.SaleNFT.getAll().filter((sn: any) => sn.sale_id === saleId);
+    const saleNfts = (await updatedDb.SaleNFT.getAll()).filter((sn: any) => sn.sale_id === saleId);
     assert.equal(saleNfts.length, 2, "Two NFT junctions expected");
     const ids = saleNfts.map((sn: any) => sn.nftToken_id);
     assert.ok(ids.includes(`${NFT721.toLowerCase()}:101`));
@@ -360,10 +372,10 @@ describe("Seaport ERC1155 tests", () => {
 });
 
 describe("Seaport relationship integrity tests", () => {
-  let mockDb: any;
+  let mockDb: ReturnType<typeof createTestIndexer>;
 
   beforeEach(() => {
-    mockDb = MockDb.createMockDb();
+    mockDb = createTestIndexer();
   });
 
   it("Verifies account relationships are properly established", async () => {
@@ -371,39 +383,40 @@ describe("Seaport relationship integrity tests", () => {
     const RECIPIENT = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     const NFT_CONTRACT = "0x1111111111111111111111111111111111111111";
 
-    const event = Seaport.OrderFulfilled.createMockEvent({
-      orderHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-      offerer: OFFERER,
-      zone: "0x0000000000000000000000000000000000000000",
-      recipient: RECIPIENT,
-      offer: [
-        [2n, NFT_CONTRACT, 123n, 1n] as [bigint, string, bigint, bigint], // ERC721 NFT
-      ],
-      consideration: [
-        [0n, "0x0000000000000000000000000000000000000000", 0n, 1000000000000000000n, OFFERER] as [
-          bigint,
-          string,
-          bigint,
-          bigint,
-          string,
-        ], // ETH payment
-      ],
-      mockEventData: {
-        block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
-        transaction: { hash: "0xtx1234567890abcdef1234567890abcdef1234567890abcdef1234567890" },
-        chainId: 1,
-        logIndex: 1,
+    const event = {
+      contract: "Seaport",
+      event: "OrderFulfilled",
+      params: {
+        orderHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        offerer: OFFERER,
+        zone: "0x0000000000000000000000000000000000000000",
+        recipient: RECIPIENT,
+        offer: [
+          [2n, NFT_CONTRACT, 123n, 1n] as [bigint, `0x${string}`, bigint, bigint], // ERC721 NFT
+        ],
+        consideration: [
+          [0n, "0x0000000000000000000000000000000000000000", 0n, 1000000000000000000n, OFFERER] as [
+            bigint,
+            `0x${string}`,
+            bigint,
+            bigint,
+            `0x${string}`,
+          ], // ETH payment
+        ],
       },
-    });
 
-    const mockDbUpdated = await Seaport.OrderFulfilled.processEvent({
-      event,
-      mockDb,
-    });
+      block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
+      transaction: { hash: "0xtx1234567890abcdef1234567890abcdef1234567890abcdef1234567890" },
+      chainId: 1,
+      logIndex: 1,
+    } as const;
 
-    const sale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
-    const offererAccount = mockDbUpdated.entities.Account.get(OFFERER.toLowerCase());
-    const recipientAccount = mockDbUpdated.entities.Account.get(RECIPIENT.toLowerCase());
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const sale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    const offererAccount = await mockDbUpdated.Account.get(OFFERER.toLowerCase());
+    const recipientAccount = await mockDbUpdated.Account.get(RECIPIENT.toLowerCase());
 
     // Verify sale references correct accounts
     assert.equal(sale?.offerer_id, OFFERER.toLowerCase(), "Sale should reference offerer");
@@ -424,44 +437,45 @@ describe("Seaport relationship integrity tests", () => {
     const NFT_CONTRACT = "0x2222222222222222222222222222222222222222";
     const TOKEN_ID = 456n;
 
-    const event = Seaport.OrderFulfilled.createMockEvent({
-      orderHash: "0x234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1",
-      offerer: OFFERER,
-      zone: "0x0000000000000000000000000000000000000000",
-      recipient: RECIPIENT,
-      offer: [
-        [2n, NFT_CONTRACT, TOKEN_ID, 1n] as [bigint, string, bigint, bigint], // ERC721 NFT
-      ],
-      consideration: [
-        [0n, "0x0000000000000000000000000000000000000000", 0n, 2000000000000000000n, OFFERER] as [
-          bigint,
-          string,
-          bigint,
-          bigint,
-          string,
-        ], // ETH payment
-      ],
-      mockEventData: {
-        block: { number: 18500001, timestamp: 1700000100, hash: "0xblock124" },
-        transaction: { hash: "0xtx234567890abcdef1234567890abcdef1234567890abcdef1234567890" },
-        chainId: 1,
-        logIndex: 2,
+    const event = {
+      contract: "Seaport",
+      event: "OrderFulfilled",
+      params: {
+        orderHash: "0x234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1",
+        offerer: OFFERER,
+        zone: "0x0000000000000000000000000000000000000000",
+        recipient: RECIPIENT,
+        offer: [
+          [2n, NFT_CONTRACT, TOKEN_ID, 1n] as [bigint, `0x${string}`, bigint, bigint], // ERC721 NFT
+        ],
+        consideration: [
+          [0n, "0x0000000000000000000000000000000000000000", 0n, 2000000000000000000n, OFFERER] as [
+            bigint,
+            `0x${string}`,
+            bigint,
+            bigint,
+            `0x${string}`,
+          ], // ETH payment
+        ],
       },
-    });
 
-    const mockDbUpdated = await Seaport.OrderFulfilled.processEvent({
-      event,
-      mockDb,
-    });
+      block: { number: 18500001, timestamp: 1700000100, hash: "0xblock124" },
+      transaction: { hash: "0xtx234567890abcdef1234567890abcdef1234567890abcdef1234567890" },
+      chainId: 1,
+      logIndex: 2,
+    } as const;
 
-    const sale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
-    const nftContract = mockDbUpdated.entities.NFTContract.get(NFT_CONTRACT.toLowerCase());
-    const nftToken = mockDbUpdated.entities.NFTToken.get(
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const sale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    const nftContract = await mockDbUpdated.NFTContract.get(NFT_CONTRACT.toLowerCase());
+    const nftToken = await mockDbUpdated.NFTToken.get(
       `${NFT_CONTRACT.toLowerCase()}:${TOKEN_ID.toString()}`
     );
 
     // Verify sale references NFT entities via junction entity
-    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
     const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === sale?.id);
     assert.equal(saleNfts.length, 1, "Sale should have one NFT");
     assert.equal(saleNfts[0].nftToken_id, `${NFT_CONTRACT.toLowerCase()}:${TOKEN_ID.toString()}`);
@@ -479,7 +493,7 @@ describe("Seaport relationship integrity tests", () => {
   it("Maintains relationships across multiple orders", async () => {
     const OFFERER = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
     const RECIPIENT = "0xffffffffffffffffffffffffffffffffffffffff";
-    const NFT_CONTRACT = "0x3333333333333333333333333333333333333333";
+    const NFT_CONTRACT = "0x41A322b28D0fF354040e2CbC676F0320d8c8850d";
 
     const events = [];
     const baseTimestamp = 1700002000;
@@ -487,32 +501,37 @@ describe("Seaport relationship integrity tests", () => {
 
     // Create multiple orders with different tokens
     for (let i = 0; i < 3; i++) {
-      const event = Seaport.OrderFulfilled.createMockEvent({
-        orderHash: `0x${i.toString().padStart(64, "0")}`,
-        offerer: OFFERER,
-        zone: "0x0000000000000000000000000000000000000000",
-        recipient: RECIPIENT,
-        offer: [[2n, NFT_CONTRACT, BigInt(1000 + i), 1n] as [bigint, string, bigint, bigint]],
-        consideration: [
-          [
-            0n,
-            "0x0000000000000000000000000000000000000000",
-            0n,
-            1000000000000000000n * BigInt(i + 1),
-            OFFERER,
-          ] as [bigint, string, bigint, bigint, string],
-        ],
-        mockEventData: {
-          block: {
-            number: baseBlockNumber + i,
-            timestamp: baseTimestamp + i * 100,
-            hash: `0xblock${baseBlockNumber + i}`,
-          },
-          transaction: { hash: `0xtx${i.toString().padStart(64, "0")}` },
-          chainId: 1,
-          logIndex: 20 + i,
+      const event = {
+        contract: "Seaport",
+        event: "OrderFulfilled",
+        params: {
+          orderHash: `0x${i.toString().padStart(64, "0")}`,
+          offerer: OFFERER,
+          zone: "0x0000000000000000000000000000000000000000",
+          recipient: RECIPIENT,
+          offer: [
+            [2n, NFT_CONTRACT, BigInt(1000 + i), 1n] as [bigint, `0x${string}`, bigint, bigint],
+          ],
+          consideration: [
+            [
+              0n,
+              "0x0000000000000000000000000000000000000000",
+              0n,
+              1000000000000000000n * BigInt(i + 1),
+              OFFERER,
+            ] as [bigint, `0x${string}`, bigint, bigint, `0x${string}`],
+          ],
         },
-      });
+
+        block: {
+          number: baseBlockNumber + i,
+          timestamp: baseTimestamp + i * 100,
+          hash: `0xblock${baseBlockNumber + i}`,
+        },
+        transaction: { hash: `0xtx${i.toString().padStart(64, "0")}` },
+        chainId: 1,
+        logIndex: 20 + i,
+      } as const;
       events.push(event);
     }
 
@@ -520,14 +539,11 @@ describe("Seaport relationship integrity tests", () => {
 
     // Process all events
     for (const event of events) {
-      currentDb = await Seaport.OrderFulfilled.processEvent({
-        event,
-        mockDb: currentDb,
-      });
+      await currentDb.process({ chains: { 1: { simulate: [event] } } });
     }
 
     // Get the NFT contract after all orders
-    const nftContract = currentDb.entities.NFTContract.get(NFT_CONTRACT.toLowerCase());
+    const nftContract = await currentDb.NFTContract.get(NFT_CONTRACT.toLowerCase());
 
     // Verify the NFT contract exists
     assert.ok(nftContract, "NFT Contract should exist");
@@ -536,7 +552,7 @@ describe("Seaport relationship integrity tests", () => {
     // Verify each token exists and references its sale
     for (let i = 0; i < 3; i++) {
       const tokenId = (1000 + i).toString();
-      const token = currentDb.entities.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:${tokenId}`);
+      const token = await currentDb.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:${tokenId}`);
 
       assert.ok(token, `Token ${tokenId} should exist`);
       // Note: With @derivedFrom relationships, sales are automatically linked
@@ -549,45 +565,46 @@ describe("Seaport relationship integrity tests", () => {
     const NFT_CONTRACT_1 = "0x4444444444444444444444444444444444444444";
     const NFT_CONTRACT_2 = "0x5555555555555555555555555555555555555555";
 
-    const event = Seaport.OrderFulfilled.createMockEvent({
-      orderHash: "0x34567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef2",
-      offerer: OFFERER,
-      zone: "0x0000000000000000000000000000000000000000",
-      recipient: RECIPIENT,
-      offer: [
-        [2n, NFT_CONTRACT_1, 100n, 1n] as [bigint, string, bigint, bigint], // First NFT
-        [2n, NFT_CONTRACT_2, 200n, 1n] as [bigint, string, bigint, bigint], // Second NFT
-      ],
-      consideration: [
-        [0n, "0x0000000000000000000000000000000000000000", 0n, 3000000000000000000n, OFFERER] as [
-          bigint,
-          string,
-          bigint,
-          bigint,
-          string,
-        ], // ETH payment
-      ],
-      mockEventData: {
-        block: { number: 18500002, timestamp: 1700000200, hash: "0xblock125" },
-        transaction: { hash: "0xtx34567890abcdef1234567890abcdef1234567890abcdef1234567890" },
-        chainId: 1,
-        logIndex: 3,
+    const event = {
+      contract: "Seaport",
+      event: "OrderFulfilled",
+      params: {
+        orderHash: "0x34567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef2",
+        offerer: OFFERER,
+        zone: "0x0000000000000000000000000000000000000000",
+        recipient: RECIPIENT,
+        offer: [
+          [2n, NFT_CONTRACT_1, 100n, 1n] as [bigint, `0x${string}`, bigint, bigint], // First NFT
+          [2n, NFT_CONTRACT_2, 200n, 1n] as [bigint, `0x${string}`, bigint, bigint], // Second NFT
+        ],
+        consideration: [
+          [0n, "0x0000000000000000000000000000000000000000", 0n, 3000000000000000000n, OFFERER] as [
+            bigint,
+            `0x${string}`,
+            bigint,
+            bigint,
+            `0x${string}`,
+          ], // ETH payment
+        ],
       },
-    });
 
-    const mockDbUpdated = await Seaport.OrderFulfilled.processEvent({
-      event,
-      mockDb,
-    });
+      block: { number: 18500002, timestamp: 1700000200, hash: "0xblock125" },
+      transaction: { hash: "0xtx34567890abcdef1234567890abcdef1234567890abcdef1234567890" },
+      chainId: 1,
+      logIndex: 3,
+    } as const;
 
-    const sale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
-    const contract1 = mockDbUpdated.entities.NFTContract.get(NFT_CONTRACT_1.toLowerCase());
-    const contract2 = mockDbUpdated.entities.NFTContract.get(NFT_CONTRACT_2.toLowerCase());
-    const token1 = mockDbUpdated.entities.NFTToken.get(`${NFT_CONTRACT_1.toLowerCase()}:100`);
-    const token2 = mockDbUpdated.entities.NFTToken.get(`${NFT_CONTRACT_2.toLowerCase()}:200`);
+    const mockDbUpdated = mockDb;
+    await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+    const sale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+    const contract1 = await mockDbUpdated.NFTContract.get(NFT_CONTRACT_1.toLowerCase());
+    const contract2 = await mockDbUpdated.NFTContract.get(NFT_CONTRACT_2.toLowerCase());
+    const token1 = await mockDbUpdated.NFTToken.get(`${NFT_CONTRACT_1.toLowerCase()}:100`);
+    const token2 = await mockDbUpdated.NFTToken.get(`${NFT_CONTRACT_2.toLowerCase()}:200`);
 
     // Verify sale references both NFT contracts and tokens via junction entities
-    const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+    const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
     const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === sale?.id);
     assert.equal(saleNfts.length, 2, "Sale should have two NFTs");
 
@@ -621,75 +638,72 @@ describe("Seaport relationship integrity tests", () => {
     const TX_HASH_2 = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
 
     // First OrderFulfilled event
-    const event1 = Seaport.OrderFulfilled.createMockEvent({
-      orderHash: "0x1111111111111111111111111111111111111111111111111111111111111111",
-      offerer: OFFERER_1,
-      zone: "0x0000000000000000000000000000000000000000",
-      recipient: RECIPIENT,
-      offer: [
-        [2n, NFT_CONTRACT, 100n, 1n] as [bigint, string, bigint, bigint], // ERC721 NFT
-      ],
-      consideration: [
-        [0n, "0x0000000000000000000000000000000000000000", 0n, 1000000000000000000n, OFFERER_1] as [
-          bigint,
-          string,
-          bigint,
-          bigint,
-          string,
-        ], // ETH payment
-      ],
-      mockEventData: {
-        block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
-        transaction: { hash: TX_HASH_1 },
-        chainId: 1,
-        logIndex: 1,
+    const event1 = {
+      contract: "Seaport",
+      event: "OrderFulfilled",
+      params: {
+        orderHash: "0x1111111111111111111111111111111111111111111111111111111111111111",
+        offerer: OFFERER_1,
+        zone: "0x0000000000000000000000000000000000000000",
+        recipient: RECIPIENT,
+        offer: [
+          [2n, NFT_CONTRACT, 100n, 1n] as [bigint, `0x${string}`, bigint, bigint], // ERC721 NFT
+        ],
+        consideration: [
+          [
+            0n,
+            "0x0000000000000000000000000000000000000000",
+            0n,
+            1000000000000000000n,
+            OFFERER_1,
+          ] as [bigint, `0x${string}`, bigint, bigint, `0x${string}`], // ETH payment
+        ],
       },
-    });
+
+      block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
+      transaction: { hash: TX_HASH_1 },
+      chainId: 1,
+      logIndex: 1,
+    } as const;
 
     // Second OrderFulfilled event with identical items (should consolidate amounts)
-    const event2 = Seaport.OrderFulfilled.createMockEvent({
-      orderHash: "0x2222222222222222222222222222222222222222222222222222222222222222",
-      offerer: OFFERER_2,
-      zone: "0x0000000000000000000000000000000000000000",
-      recipient: RECIPIENT,
-      offer: [
-        [2n, NFT_CONTRACT, 100n, 1n] as [bigint, string, bigint, bigint], // Same ERC721 NFT
-      ],
-      consideration: [
-        [0n, "0x0000000000000000000000000000000000000000", 0n, 1000000000000000000n, OFFERER_2] as [
-          bigint,
-          string,
-          bigint,
-          bigint,
-          string,
-        ], // Same ETH payment
-      ],
-      mockEventData: {
-        block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
-        transaction: { hash: TX_HASH_2 },
-        chainId: 1,
-        logIndex: 2,
+    const event2 = {
+      contract: "Seaport",
+      event: "OrderFulfilled",
+      params: {
+        orderHash: "0x2222222222222222222222222222222222222222222222222222222222222222",
+        offerer: OFFERER_2,
+        zone: "0x0000000000000000000000000000000000000000",
+        recipient: RECIPIENT,
+        offer: [
+          [2n, NFT_CONTRACT, 100n, 1n] as [bigint, `0x${string}`, bigint, bigint], // Same ERC721 NFT
+        ],
+        consideration: [
+          [
+            0n,
+            "0x0000000000000000000000000000000000000000",
+            0n,
+            1000000000000000000n,
+            OFFERER_2,
+          ] as [bigint, `0x${string}`, bigint, bigint, `0x${string}`], // Same ETH payment
+        ],
       },
-    });
+
+      block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
+      transaction: { hash: TX_HASH_2 },
+      chainId: 1,
+      logIndex: 2,
+    } as const;
 
     let currentDb = mockDb;
 
-    // Process first event
-    currentDb = await Seaport.OrderFulfilled.processEvent({
-      event: event1,
-      mockDb: currentDb,
-    });
-
-    // Process second event (should create separate sale)
-    currentDb = await Seaport.OrderFulfilled.processEvent({
-      event: event2,
-      mockDb: currentDb,
-    });
+    // Process both events from the same block (should create separate sales)
+    await currentDb.process({ chains: { 1: { simulate: [event1, event2] } } });
 
     const saleId1 = `${event1.chainId}_${event1.transaction.hash}`;
     const saleId2 = `${event2.chainId}_${event2.transaction.hash}`;
-    const sale1 = currentDb.entities.Sale.get(saleId1);
-    const sale2 = currentDb.entities.Sale.get(saleId2);
+    const sale1 = await currentDb.Sale.get(saleId1);
+    const sale2 = await currentDb.Sale.get(saleId2);
 
     // Verify both sales exist
     assert.ok(sale1, "First sale should exist");
@@ -760,50 +774,51 @@ describe("Seaport relationship integrity tests", () => {
       const RECIPIENT = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
       const NFT_CONTRACT = "0x1111111111111111111111111111111111111111";
 
-      const event = Seaport.OrderFulfilled.createMockEvent({
-        orderHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-        offerer: OFFERER,
-        zone: "0x0000000000000000000000000000000000000000",
-        recipient: RECIPIENT,
-        offer: [
-          [2n, NFT_CONTRACT, 100n, 1n] as [bigint, string, bigint, bigint], // ERC721 NFT
-          [0n, "0x0000000000000000000000000000000000000000", 0n, 0n] as [
-            bigint,
-            string,
-            bigint,
-            bigint,
-          ], // Empty ETH
-        ],
-        consideration: [
-          [0n, "0x0000000000000000000000000000000000000000", 0n, 1000000000000000000n, OFFERER] as [
-            bigint,
-            string,
-            bigint,
-            bigint,
-            string,
-          ], // Real ETH payment
-          [0n, "0x0000000000000000000000000000000000000000", 0n, 0n, OFFERER] as [
-            bigint,
-            string,
-            bigint,
-            bigint,
-            string,
-          ], // Empty ETH
-        ],
-        mockEventData: {
-          block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
-          transaction: { hash: "0xtx1234567890abcdef1234567890abcdef1234567890abcdef1234567890" },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seaport",
+        event: "OrderFulfilled",
+        params: {
+          orderHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+          offerer: OFFERER,
+          zone: "0x0000000000000000000000000000000000000000",
+          recipient: RECIPIENT,
+          offer: [
+            [2n, NFT_CONTRACT, 100n, 1n] as [bigint, `0x${string}`, bigint, bigint], // ERC721 NFT
+            [0n, "0x0000000000000000000000000000000000000000", 0n, 0n] as [
+              bigint,
+              `0x${string}`,
+              bigint,
+              bigint,
+            ], // Empty ETH
+          ],
+          consideration: [
+            [
+              0n,
+              "0x0000000000000000000000000000000000000000",
+              0n,
+              1000000000000000000n,
+              OFFERER,
+            ] as [bigint, `0x${string}`, bigint, bigint, `0x${string}`], // Real ETH payment
+            [0n, "0x0000000000000000000000000000000000000000", 0n, 0n, OFFERER] as [
+              bigint,
+              `0x${string}`,
+              bigint,
+              bigint,
+              `0x${string}`,
+            ], // Empty ETH
+          ],
         },
-      });
 
-      const mockDbUpdated = await Seaport.OrderFulfilled.processEvent({
-        event,
-        mockDb,
-      });
+        block: { number: 18500000, timestamp: 1700000000, hash: "0xblock123" },
+        transaction: { hash: "0xtx1234567890abcdef1234567890abcdef1234567890abcdef1234567890" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      const sale = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}`);
+      const mockDbUpdated = mockDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const sale = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}`);
 
       // Verify empty ETH items are filtered out
       assert.equal(sale?.offerItemTypes.length, 1, "Should have 1 offer item");
@@ -898,16 +913,12 @@ describe("Seaport relationship integrity tests", () => {
       testCases.forEach(({ name, eventOrder, description }) => {
         it(`${name}: ${description}`, async () => {
           // Create a fresh mock database for each test
-          let currentDb = MockDb.createMockDb();
+          let currentDb = createTestIndexer();
 
           // Process events in the specified order
-          for (const e of eventOrder) {
-            const event = decodeRawOrderFulfilledEvent(e);
-            currentDb = await Seaport.OrderFulfilled.processEvent({
-              event,
-              mockDb: currentDb,
-            });
-          }
+          await currentDb.process({
+            chains: { 1: { simulate: eventOrder.map(decodeRawOrderFulfilledEvent) } },
+          });
 
           // Check if any events have the same offerer and recipient (should be ignored)
           const eventsWithSameOffererRecipient = eventOrder.filter((e) => {
@@ -925,7 +936,7 @@ describe("Seaport relationship integrity tests", () => {
 
             if (validEvents.length === 0) {
               // All events have same offerer and recipient, so no sales should be created
-              const allSales = currentDb.entities.Sale.getAll();
+              const allSales = await currentDb.Sale.getAll();
               assert.equal(
                 allSales.length,
                 0,
@@ -936,7 +947,7 @@ describe("Seaport relationship integrity tests", () => {
 
             // Only check sales from valid events
             const validEvent = validEvents[0];
-            const sale = currentDb.entities.Sale.get(
+            const sale = await currentDb.Sale.get(
               `${validEvent.chainId}_${validEvent.transactionHash}`
             );
             assert.ok(
@@ -945,7 +956,7 @@ describe("Seaport relationship integrity tests", () => {
             );
           } else {
             // All events have different offerer and recipient, so they should all create sales
-            const allSales = currentDb.entities.Sale.getAll();
+            const allSales = await currentDb.Sale.getAll();
             assert.equal(
               allSales.length,
               eventOrder.length,
@@ -964,7 +975,7 @@ describe("Seaport relationship integrity tests", () => {
     describe("Multiple OrderFulfilled Events Classification Fix", () => {
       it("should correctly classify as buy/sell instead of swap when merging events from same transaction", async () => {
         // Create a fresh mock database
-        const testMockDb = MockDb.createMockDb();
+        const testMockDb = createTestIndexer();
 
         // Real addresses from the user's issue
         const seller = "0xe706E8B77Ca577D387e8F1710fBbC13395f769ef";
@@ -1018,25 +1029,21 @@ describe("Seaport relationship integrity tests", () => {
 
         // Check that only one Sale entity was created (merged)
         const saleId = `${chainId}_${transactionHash}`;
-        const sale = finalDb.entities.Sale.get(saleId);
+        const sale = await finalDb.Sale.get(saleId);
         assert.ok(sale, "Sale entity should be created");
         assert.equal(sale.market, "Seaport");
         assert.equal(sale.transactionHash, transactionHash);
 
         // Check account junctions - this is the key fix
         // The buyer should have a buy junction, not a swap junction
-        const buyerBuyJunction = finalDb.entities.AccountBuy.get(
-          `${buyer.toLowerCase()}:${saleId}`
-        );
-        const buyerSwapJunction = finalDb.entities.AccountSwap.get(
-          `${buyer.toLowerCase()}:${saleId}`
-        );
+        const buyerBuyJunction = await finalDb.AccountBuy.get(`${buyer.toLowerCase()}:${saleId}`);
+        const buyerSwapJunction = await finalDb.AccountSwap.get(`${buyer.toLowerCase()}:${saleId}`);
 
         // The seller should have a sell junction, not a swap junction
-        const sellerSellJunction = finalDb.entities.AccountSell.get(
+        const sellerSellJunction = await finalDb.AccountSell.get(
           `${seller.toLowerCase()}:${saleId}`
         );
-        const sellerSwapJunction = finalDb.entities.AccountSwap.get(
+        const sellerSwapJunction = await finalDb.AccountSwap.get(
           `${seller.toLowerCase()}:${saleId}`
         );
 
@@ -1077,19 +1084,19 @@ describe("Seaport relationship integrity tests", () => {
         assert.equal(sellerSellActive, true, "Seller should have an active sell junction");
 
         // Verify the Account entities were created
-        const buyerAccount = finalDb.entities.Account.get(buyer.toLowerCase());
-        const sellerAccount = finalDb.entities.Account.get(seller.toLowerCase());
+        const buyerAccount = await finalDb.Account.get(buyer.toLowerCase());
+        const sellerAccount = await finalDb.Account.get(seller.toLowerCase());
         assert.ok(buyerAccount, "Buyer account should be created");
         assert.ok(sellerAccount, "Seller account should be created");
 
         // Verify NFT-related entities
-        const nftContract_entity = finalDb.entities.NFTContract.get(nftContract.toLowerCase());
-        const nftToken = finalDb.entities.NFTToken.get(`${nftContract.toLowerCase()}:${tokenId}`);
+        const nftContract_entity = await finalDb.NFTContract.get(nftContract.toLowerCase());
+        const nftToken = await finalDb.NFTToken.get(`${nftContract.toLowerCase()}:${tokenId}`);
         assert.ok(nftContract_entity, "NFT contract should be created");
         assert.ok(nftToken, "NFT token should be created");
 
         // Verify SaleNFT junction
-        const saleNftJunction = finalDb.entities.SaleNFT.get(
+        const saleNftJunction = await finalDb.SaleNFT.get(
           `${saleId}:${nftContract.toLowerCase()}:${tokenId}`
         );
         assert.ok(saleNftJunction, "Sale-NFT junction should be created");
@@ -1097,7 +1104,7 @@ describe("Seaport relationship integrity tests", () => {
 
       it("should handle legitimate swap scenarios correctly", async () => {
         // Test case where it SHOULD be classified as a swap (NFT for NFT)
-        const testMockDb = MockDb.createMockDb();
+        const testMockDb = createTestIndexer();
 
         const user1 = TEST_ADDRESSES.USER_1;
         const user2 = TEST_ADDRESSES.USER_2;
@@ -1131,24 +1138,12 @@ describe("Seaport relationship integrity tests", () => {
         const saleId = `${chainId}_${transactionHash}`;
 
         // Check if junctions are active (have valid account_id and sale_id)
-        const user1SwapJunction = finalDb.entities.AccountSwap.get(
-          `${user1.toLowerCase()}:${saleId}`
-        );
-        const user2SwapJunction = finalDb.entities.AccountSwap.get(
-          `${user2.toLowerCase()}:${saleId}`
-        );
-        const user1BuyJunction = finalDb.entities.AccountBuy.get(
-          `${user1.toLowerCase()}:${saleId}`
-        );
-        const user1SellJunction = finalDb.entities.AccountSell.get(
-          `${user1.toLowerCase()}:${saleId}`
-        );
-        const user2BuyJunction = finalDb.entities.AccountBuy.get(
-          `${user2.toLowerCase()}:${saleId}`
-        );
-        const user2SellJunction = finalDb.entities.AccountSell.get(
-          `${user2.toLowerCase()}:${saleId}`
-        );
+        const user1SwapJunction = await finalDb.AccountSwap.get(`${user1.toLowerCase()}:${saleId}`);
+        const user2SwapJunction = await finalDb.AccountSwap.get(`${user2.toLowerCase()}:${saleId}`);
+        const user1BuyJunction = await finalDb.AccountBuy.get(`${user1.toLowerCase()}:${saleId}`);
+        const user1SellJunction = await finalDb.AccountSell.get(`${user1.toLowerCase()}:${saleId}`);
+        const user2BuyJunction = await finalDb.AccountBuy.get(`${user2.toLowerCase()}:${saleId}`);
+        const user2SellJunction = await finalDb.AccountSell.get(`${user2.toLowerCase()}:${saleId}`);
 
         // Check which junctions are active
         const user1SwapActive = !!(
@@ -1204,7 +1199,7 @@ describe("Seaport relationship integrity tests", () => {
       it("should correctly classify complex sale as buy/sell when offerer is sole NFT recipient", async () => {
         // Test case for complex sale where offerer offers NFTs and gets some NFTs back
         // but is the only NFT recipient - should be classified as sale, not swap
-        const testMockDb = MockDb.createMockDb();
+        const testMockDb = createTestIndexer();
 
         const seller = TEST_ADDRESSES.SELLER_1;
         const buyer = TEST_ADDRESSES.BUYER_1;
@@ -1247,22 +1242,18 @@ describe("Seaport relationship integrity tests", () => {
         const finalDb = await processEvents([complexSaleEvent], testMockDb);
 
         const saleId = `${chainId}_${transactionHash}`;
-        const sale = finalDb.entities.Sale.get(saleId);
+        const sale = await finalDb.Sale.get(saleId);
         assert.ok(sale, "Sale entity should be created");
 
-        const sellerSellJunction = finalDb.entities.AccountSell.get(
+        const sellerSellJunction = await finalDb.AccountSell.get(
           `${seller.toLowerCase()}:${saleId}`
         );
-        const sellerSwapJunction = finalDb.entities.AccountSwap.get(
+        const sellerSwapJunction = await finalDb.AccountSwap.get(
           `${seller.toLowerCase()}:${saleId}`
         );
 
-        const buyerBuyJunction = finalDb.entities.AccountBuy.get(
-          `${buyer.toLowerCase()}:${saleId}`
-        );
-        const buyerSwapJunction = finalDb.entities.AccountSwap.get(
-          `${buyer.toLowerCase()}:${saleId}`
-        );
+        const buyerBuyJunction = await finalDb.AccountBuy.get(`${buyer.toLowerCase()}:${saleId}`);
+        const buyerSwapJunction = await finalDb.AccountSwap.get(`${buyer.toLowerCase()}:${saleId}`);
 
         // Check if junctions are active (have valid account_id and sale_id)
         const sellerSellActive = !!(
@@ -1313,7 +1304,7 @@ describe("Seaport relationship integrity tests", () => {
 
   describe("Specific Event Analysis", () => {
     it("should correctly classify the offerer as buyer", async () => {
-      const mockDb = MockDb.createMockDb();
+      const mockDb = createTestIndexer();
 
       // Event data from user's query
       const rawEvent = {
@@ -1334,24 +1325,22 @@ describe("Seaport relationship integrity tests", () => {
       const event = decodeRawOrderFulfilledEvent(rawEvent);
 
       // Process the event
-      const updatedDb = await Seaport.OrderFulfilled.processEvent({
-        event,
-        mockDb,
-      });
+      const updatedDb = mockDb;
+      await updatedDb.process({ chains: { 1: { simulate: [event] } } });
 
       const saleId = `${event.chainId}_${event.transaction.hash}`;
-      const sale = updatedDb.entities.Sale.get(saleId);
+      const sale = await updatedDb.Sale.get(saleId);
 
       assert.ok(sale, "Sale should be created");
 
       // Check the classification
-      const offererBuyJunction = updatedDb.entities.AccountBuy.get(
+      const offererBuyJunction = await updatedDb.AccountBuy.get(
         `${event.params.offerer.toLowerCase()}:${saleId}`
       );
-      const offererSellJunction = updatedDb.entities.AccountSell.get(
+      const offererSellJunction = await updatedDb.AccountSell.get(
         `${event.params.offerer.toLowerCase()}:${saleId}`
       );
-      const offererSwapJunction = updatedDb.entities.AccountSwap.get(
+      const offererSwapJunction = await updatedDb.AccountSwap.get(
         `${event.params.offerer.toLowerCase()}:${saleId}`
       );
 

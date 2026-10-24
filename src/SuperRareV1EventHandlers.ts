@@ -1,4 +1,4 @@
-import { SuperRareV1, Sale } from "generated";
+import { indexer, type Sale } from "envio";
 
 import {
   getOrCreateAccount,
@@ -8,7 +8,7 @@ import {
   createAccountSell,
 } from "./entities/EntityHelpers";
 
-SuperRareV1.Sold.handler(async ({ event, context }) => {
+indexer.onEvent({ contract: "SuperRareV1", event: "Sold" }, async ({ event, context }) => {
   const timestamp = BigInt(event.block.timestamp);
   const saleId = `${event.chainId}_${event.transaction.hash}`;
   const tokenId = event.params.tokenId.toString();

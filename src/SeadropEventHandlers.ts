@@ -1,4 +1,4 @@
-import { Seadrop, Sale, SeadropCounter } from "generated";
+import { indexer, type Sale, type SeadropCounter } from "envio";
 
 import {
   getOrCreateAccount,
@@ -10,7 +10,7 @@ import {
 // SeaDropMint(address indexed nftContract, address indexed minter, address indexed feeRecipient,
 //              address payer, uint256 quantityMinted, uint256 unitMintPrice, uint256 feeBps, uint256 dropStageIndex)
 // Map to Sale entity using payer as offerer and minter as recipient.
-Seadrop.SeaDropMint.handler(async ({ event, context }) => {
+indexer.onEvent({ contract: "Seadrop", event: "SeaDropMint" }, async ({ event, context }) => {
   const timestamp = BigInt(event.block.timestamp);
 
   // Ensure Account entities exist for payer (offerer) and minter (recipient)

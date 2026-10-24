@@ -1,14 +1,15 @@
 import assert from "assert";
 
-import { TestHelpers } from "generated";
+import { createTestIndexer } from "envio";
 
 import { ITEM_TYPES } from "./TestUtils";
 
-const { MockDb, Seadrop } = TestHelpers;
-
 describe("Seadrop event tests", () => {
   // Create mock db
-  const mockDb = MockDb.createMockDb();
+  let mockDb: ReturnType<typeof createTestIndexer>;
+  beforeEach(() => {
+    mockDb = createTestIndexer();
+  });
 
   // Test addresses
   const PAYER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -20,45 +21,48 @@ describe("Seadrop event tests", () => {
   describe("SeaDropMint event tests", () => {
     it("Sale is created correctly for single mint", async () => {
       // Creating mock for Seadrop SeaDropMint event
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 1n,
-        unitMintPrice: 1000000000000000000n, // 1 ETH in wei
-        feeBps: 250n, // 2.5%
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: {
-            number: 18500000,
-            timestamp: 1700000000,
-            hash: "0xblock123",
-          },
-          transaction: {
-            hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-          },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 1n,
+          unitMintPrice: 1000000000000000000n,
+          // 1 ETH in wei
+          feeBps: 250n,
+          // 2.5%
+          dropStageIndex: 0n,
         },
-      });
+
+        block: {
+          number: 18500000,
+          timestamp: 1700000000,
+          hash: "0xblock123",
+        },
+        transaction: {
+          hash: "0xtxhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
       // Processing the event
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb,
-      });
+      const mockDbUpdated = mockDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
       // Getting the actual entities from the mock database
       const saleId = `${event.chainId}_${event.transaction.hash}_0`; // Individual sale ID with token ID
-      const actualSale = mockDbUpdated.entities.Sale.get(saleId);
-      const actualPayerAccount = mockDbUpdated.entities.Account.get(PAYER_ADDRESS.toLowerCase());
-      const actualMinterAccount = mockDbUpdated.entities.Account.get(MINTER_ADDRESS.toLowerCase());
-      const actualNFTContract = mockDbUpdated.entities.NFTContract.get(NFT_CONTRACT.toLowerCase());
-      const actualSeadropCounter = mockDbUpdated.entities.SeadropCounter.get(NFT_CONTRACT);
+      const actualSale = await mockDbUpdated.Sale.get(saleId);
+      const actualPayerAccount = await mockDbUpdated.Account.get(PAYER_ADDRESS.toLowerCase());
+      const actualMinterAccount = await mockDbUpdated.Account.get(MINTER_ADDRESS.toLowerCase());
+      const actualNFTContract = await mockDbUpdated.NFTContract.get(NFT_CONTRACT.toLowerCase());
+      const actualSeadropCounter = await mockDbUpdated.SeadropCounter.get(NFT_CONTRACT);
 
       // Verify account junctions were created (only buy junction since sell tracking is disabled)
-      const minterBuyJunction = mockDbUpdated.entities.AccountBuy.get(
+      const minterBuyJunction = await mockDbUpdated.AccountBuy.get(
         `${MINTER_ADDRESS.toLowerCase()}:${saleId}`
       );
 
@@ -72,7 +76,7 @@ describe("Seadrop event tests", () => {
       assert.equal(actualSale.recipient_id, MINTER_ADDRESS.toLowerCase());
 
       // Check NFT data via junction entity
-      const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+      const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
       const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
       assert.equal(saleNfts.length, 1, "Sale should have one NFT");
       assert.equal(saleNfts[0].nftToken_id, `${NFT_CONTRACT.toLowerCase()}:0`);
@@ -116,7 +120,7 @@ describe("Seadrop event tests", () => {
       assert.equal(actualNFTContract.id, NFT_CONTRACT.toLowerCase());
       assert.equal(actualNFTContract.address, NFT_CONTRACT);
 
-      const actualNFTToken = mockDbUpdated.entities.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:0`);
+      const actualNFTToken = await mockDbUpdated.NFTToken.get(`${NFT_CONTRACT.toLowerCase()}:0`);
       assert(actualNFTToken, "NFT token should be created");
       assert.equal(actualNFTToken.id, `${NFT_CONTRACT.toLowerCase()}:0`);
       assert.equal(actualNFTToken.contract_id, NFT_CONTRACT.toLowerCase());
@@ -134,48 +138,49 @@ describe("Seadrop event tests", () => {
     });
 
     it("Handles multiple quantity mint correctly", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
       const quantityMinted = 3n;
       const unitMintPrice = 500000000000000000n; // 0.5 ETH
 
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted,
-        unitMintPrice,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: {
-            number: 18500001,
-            timestamp: 1700000001,
-            hash: "0xblock124",
-          },
-          transaction: {
-            hash: "0xtxhash_multiple_mint",
-          },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted,
+          unitMintPrice,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb: testDb,
-      });
+        block: {
+          number: 18500001,
+          timestamp: 1700000001,
+          hash: "0xblock124",
+        },
+        transaction: {
+          hash: "0xtxhash_multiple_mint",
+        },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      const actualSeadropCounter = mockDbUpdated.entities.SeadropCounter.get(NFT_CONTRACT);
+      const mockDbUpdated = testDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const actualSeadropCounter = await mockDbUpdated.SeadropCounter.get(NFT_CONTRACT);
 
       // Verify counter was incremented by quantity
       assert(actualSeadropCounter, "SeadropCounter should exist");
       assert.equal(actualSeadropCounter.counter, BigInt(3));
 
       // Verify individual sales were created for each token
-      const sale0 = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}_0`);
-      const sale1 = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}_1`);
-      const sale2 = mockDbUpdated.entities.Sale.get(`${event.chainId}_${event.transaction.hash}_2`);
+      const sale0 = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}_0`);
+      const sale1 = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}_1`);
+      const sale2 = await mockDbUpdated.Sale.get(`${event.chainId}_${event.transaction.hash}_2`);
 
       assert(sale0, "Sale for token 0 should be created");
       assert(sale1, "Sale for token 1 should be created");
@@ -206,7 +211,7 @@ describe("Seadrop event tests", () => {
       assert.equal(sale2.market, "Seadrop");
 
       // Verify SaleNFT junctions were created for all tokens
-      const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+      const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
       const sale0Nfts = allSaleNfts.filter((sn) => sn.sale_id === sale0?.id);
       const sale1Nfts = allSaleNfts.filter((sn) => sn.sale_id === sale1?.id);
       const sale2Nfts = allSaleNfts.filter((sn) => sn.sale_id === sale2?.id);
@@ -221,67 +226,68 @@ describe("Seadrop event tests", () => {
     });
 
     it("Maintains counter state across multiple mints", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
 
       // First mint - 2 tokens
-      const event1 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 2n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500002, timestamp: 1700000002, hash: "0xblock125" },
-          transaction: { hash: "0xtxhash_first_mint" },
-          chainId: 1,
-          logIndex: 1,
+      const event1 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 2n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      let currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event1,
-        mockDb: testDb,
-      });
+        block: { number: 18500002, timestamp: 1700000002, hash: "0xblock125" },
+        transaction: { hash: "0xtxhash_first_mint" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
+
+      let currentDb = testDb;
+      await currentDb.process({ chains: { 1: { simulate: [event1] } } });
 
       // Verify first mint counter
-      let counter = currentDb.entities.SeadropCounter.get(NFT_CONTRACT);
+      let counter = await currentDb.SeadropCounter.get(NFT_CONTRACT);
       assert.equal(counter?.counter, BigInt(2));
 
       // Second mint - 3 tokens
-      const event2 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 3n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500003, timestamp: 1700000003, hash: "0xblock126" },
-          transaction: { hash: "0xtxhash_second_mint" },
-          chainId: 1,
-          logIndex: 1,
+      const event2 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 3n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event2,
-        mockDb: currentDb,
-      });
+        block: { number: 18500003, timestamp: 1700000003, hash: "0xblock126" },
+        transaction: { hash: "0xtxhash_second_mint" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
+
+      await currentDb.process({ chains: { 1: { simulate: [event2] } } });
 
       // Verify second mint counter
-      counter = currentDb.entities.SeadropCounter.get(NFT_CONTRACT);
+      counter = await currentDb.SeadropCounter.get(NFT_CONTRACT);
       assert.equal(counter?.counter, BigInt(5)); // 2 + 3
 
       // Verify second mint creates individual sales with token IDs starting from 2
       // Current implementation uses token ID in sale ID, not array index
-      const sale2_0 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_2`);
-      const sale2_1 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_3`);
-      const sale2_2 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_4`);
+      const sale2_0 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_2`);
+      const sale2_1 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_3`);
+      const sale2_2 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_4`);
 
       assert(sale2_0, "Second mint sale 2 should exist");
       assert(sale2_1, "Second mint sale 3 should exist");
@@ -292,68 +298,69 @@ describe("Seadrop event tests", () => {
     });
 
     it("Handles different NFT contracts with separate counters", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
       const NFT_CONTRACT_2 = "0x2222222222222222222222222222222222222222";
 
       // Mint from first contract
-      const event1 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 2n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500004, timestamp: 1700000004, hash: "0xblock127" },
-          transaction: { hash: "0xtxhash_contract1" },
-          chainId: 1,
-          logIndex: 1,
+      const event1 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 2n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      let currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event1,
-        mockDb: testDb,
-      });
+        block: { number: 18500004, timestamp: 1700000004, hash: "0xblock127" },
+        transaction: { hash: "0xtxhash_contract1" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
+
+      let currentDb = testDb;
+      await currentDb.process({ chains: { 1: { simulate: [event1] } } });
 
       // Mint from second contract
-      const event2 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT_2,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 3n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500005, timestamp: 1700000005, hash: "0xblock128" },
-          transaction: { hash: "0xtxhash_contract2" },
-          chainId: 1,
-          logIndex: 1,
+      const event2 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT_2,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 3n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event2,
-        mockDb: currentDb,
-      });
+        block: { number: 18500005, timestamp: 1700000005, hash: "0xblock128" },
+        transaction: { hash: "0xtxhash_contract2" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
+
+      await currentDb.process({ chains: { 1: { simulate: [event2] } } });
 
       // Verify separate counters
-      const counter1 = currentDb.entities.SeadropCounter.get(NFT_CONTRACT);
-      const counter2 = currentDb.entities.SeadropCounter.get(NFT_CONTRACT_2);
+      const counter1 = await currentDb.SeadropCounter.get(NFT_CONTRACT);
+      const counter2 = await currentDb.SeadropCounter.get(NFT_CONTRACT_2);
 
       assert.equal(counter1?.counter, BigInt(2));
       assert.equal(counter2?.counter, BigInt(3));
 
       // Verify token IDs are independent - each contract starts from 0
-      const sale1_0 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_0`);
-      const sale1_1 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_1`);
-      const sale2_0 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_0`);
-      const sale2_1 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_1`);
-      const sale2_2 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_2`);
+      const sale1_0 = await currentDb.Sale.get(`${event1.chainId}_${event1.transaction.hash}_0`);
+      const sale1_1 = await currentDb.Sale.get(`${event1.chainId}_${event1.transaction.hash}_1`);
+      const sale2_0 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_0`);
+      const sale2_1 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_1`);
+      const sale2_2 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_2`);
 
       assert.equal(sale1_0?.offerIdentifiers[0], "0");
       assert.equal(sale1_1?.offerIdentifiers[0], "1");
@@ -363,31 +370,33 @@ describe("Seadrop event tests", () => {
     });
 
     it("Handles zero unit price correctly", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
 
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 1n,
-        unitMintPrice: 0n, // Free mint
-        feeBps: 0n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500006, timestamp: 1700000006, hash: "0xblock129" },
-          transaction: { hash: "0xtxhash_free_mint" },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 1n,
+          unitMintPrice: 0n,
+          // Free mint
+          feeBps: 0n,
+          dropStageIndex: 0n,
         },
-      });
 
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb: testDb,
-      });
+        block: { number: 18500006, timestamp: 1700000006, hash: "0xblock129" },
+        transaction: { hash: "0xtxhash_free_mint" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      const actualSale = mockDbUpdated.entities.Sale.get(
+      const mockDbUpdated = testDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const actualSale = await mockDbUpdated.Sale.get(
         `${event.chainId}_${event.transaction.hash}_0`
       );
 
@@ -400,64 +409,65 @@ describe("Seadrop event tests", () => {
     });
 
     it("Creates separate sales for different transactions", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
 
       // First transaction
-      const event1 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 1n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500007, timestamp: 1700000007, hash: "0xblock130" },
-          transaction: { hash: "0xtxhash_transaction1" },
-          chainId: 1,
-          logIndex: 1,
+      const event1 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 1n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
+
+        block: { number: 18500007, timestamp: 1700000007, hash: "0xblock130" },
+        transaction: { hash: "0xtxhash_transaction1" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
       // Second transaction
-      const event2 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 1n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500008, timestamp: 1700000008, hash: "0xblock131" },
-          transaction: { hash: "0xtxhash_transaction2" },
-          chainId: 1,
-          logIndex: 1,
+      const event2 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 1n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      let currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event1,
-        mockDb: testDb,
-      });
+        block: { number: 18500008, timestamp: 1700000008, hash: "0xblock131" },
+        transaction: { hash: "0xtxhash_transaction2" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event2,
-        mockDb: currentDb,
-      });
+      let currentDb = testDb;
+      await currentDb.process({ chains: { 1: { simulate: [event1] } } });
+
+      await currentDb.process({ chains: { 1: { simulate: [event2] } } });
 
       // Verify both sales exist (individual sales per token)
-      const sale1 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_0`);
-      const sale2 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_1`);
+      const sale1 = await currentDb.Sale.get(`${event1.chainId}_${event1.transaction.hash}_0`);
+      const sale2 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_1`);
 
       assert(sale1, "First sale should exist");
       assert(sale2, "Second sale should exist");
       assert.notEqual(sale1?.id, sale2?.id, "Sales should have different IDs");
 
       // Verify counter was incremented for both
-      const counter = currentDb.entities.SeadropCounter.get(NFT_CONTRACT);
+      const counter = await currentDb.SeadropCounter.get(NFT_CONTRACT);
       assert.equal(counter?.counter, BigInt(2));
 
       // Verify token IDs are sequential across transactions
@@ -466,42 +476,44 @@ describe("Seadrop event tests", () => {
     });
 
     it("Handles large quantity mints correctly", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
       const largeQuantity = 100n;
 
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: largeQuantity,
-        unitMintPrice: 100000000000000000n, // 0.1 ETH
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500009, timestamp: 1700000009, hash: "0xblock132" },
-          transaction: { hash: "0xtxhash_large_mint" },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: largeQuantity,
+          unitMintPrice: 100000000000000000n,
+          // 0.1 ETH
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb: testDb,
-      });
+        block: { number: 18500009, timestamp: 1700000009, hash: "0xblock132" },
+        transaction: { hash: "0xtxhash_large_mint" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      const actualSeadropCounter = mockDbUpdated.entities.SeadropCounter.get(NFT_CONTRACT);
+      const mockDbUpdated = testDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const actualSeadropCounter = await mockDbUpdated.SeadropCounter.get(NFT_CONTRACT);
 
       // Verify counter was incremented correctly
       assert(actualSeadropCounter, "SeadropCounter should exist");
       assert.equal(actualSeadropCounter.counter, largeQuantity);
 
       // Verify individual sales were created for each token
-      const firstSale = mockDbUpdated.entities.Sale.get(
+      const firstSale = await mockDbUpdated.Sale.get(
         `${event.chainId}_${event.transaction.hash}_0`
       );
-      const lastSale = mockDbUpdated.entities.Sale.get(
+      const lastSale = await mockDbUpdated.Sale.get(
         `${event.chainId}_${event.transaction.hash}_${(largeQuantity - 1n).toString()}`
       );
 
@@ -517,8 +529,8 @@ describe("Seadrop event tests", () => {
       assert.equal(firstSale.considerationAmounts[0], "100000000000000000"); // 0.1 ETH per token
 
       // Verify all SaleNFT junctions were created
-      const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
-      const allSales = mockDbUpdated.entities.Sale.getAll();
+      const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
+      const allSales = await mockDbUpdated.Sale.getAll();
       const salesFromThisTx = allSales.filter(
         (sale) => sale.transactionHash === event.transaction.hash
       );
@@ -533,31 +545,32 @@ describe("Seadrop event tests", () => {
 
   describe("SeadropCounter entity tests", () => {
     it("Creates SeadropCounter with correct initial state", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
 
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 1n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500010, timestamp: 1700000010, hash: "0xblock133" },
-          transaction: { hash: "0xtxhash_counter_test" },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 1n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb: testDb,
-      });
+        block: { number: 18500010, timestamp: 1700000010, hash: "0xblock133" },
+        transaction: { hash: "0xtxhash_counter_test" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      const counter = mockDbUpdated.entities.SeadropCounter.get(NFT_CONTRACT);
+      const mockDbUpdated = testDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const counter = await mockDbUpdated.SeadropCounter.get(NFT_CONTRACT);
 
       assert(counter, "SeadropCounter should be created");
       assert.equal(counter.id, NFT_CONTRACT);
@@ -565,98 +578,102 @@ describe("Seadrop event tests", () => {
     });
 
     it("Updates SeadropCounter correctly on subsequent mints", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
 
       // First mint
-      const event1 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 5n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500011, timestamp: 1700000011, hash: "0xblock134" },
-          transaction: { hash: "0xtxhash_counter_test1" },
-          chainId: 1,
-          logIndex: 1,
+      const event1 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 5n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      let currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event1,
-        mockDb: testDb,
-      });
+        block: { number: 18500011, timestamp: 1700000011, hash: "0xblock134" },
+        transaction: { hash: "0xtxhash_counter_test1" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      let counter = currentDb.entities.SeadropCounter.get(NFT_CONTRACT);
+      let currentDb = testDb;
+      await currentDb.process({ chains: { 1: { simulate: [event1] } } });
+
+      let counter = await currentDb.SeadropCounter.get(NFT_CONTRACT);
       assert.equal(counter?.counter, BigInt(5));
 
       // Second mint
-      const event2 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 3n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500012, timestamp: 1700000012, hash: "0xblock135" },
-          transaction: { hash: "0xtxhash_counter_test2" },
-          chainId: 1,
-          logIndex: 1,
+      const event2 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 3n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event2,
-        mockDb: currentDb,
-      });
+        block: { number: 18500012, timestamp: 1700000012, hash: "0xblock135" },
+        transaction: { hash: "0xtxhash_counter_test2" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      counter = currentDb.entities.SeadropCounter.get(NFT_CONTRACT);
+      await currentDb.process({ chains: { 1: { simulate: [event2] } } });
+
+      counter = await currentDb.SeadropCounter.get(NFT_CONTRACT);
       assert.equal(counter?.counter, BigInt(8)); // 5 + 3
     });
   });
 
   describe("Shim functionality tests", () => {
     it("Replaces MFC SeaDropXArtBlocksShim with actual ArtBlocks contract", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
       const SHIM_CONTRACT = "0x8Cfbe812a0CFEB6775900534389Ca72eD27741e3";
       const ACTUAL_ARTBLOCKS_CONTRACT = "0x000000DAb303a194b3F55d4702B24740ad5a2F00";
 
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: SHIM_CONTRACT, // Using the shim contract address
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 1n,
-        unitMintPrice: 1000000000000000000n, // 1 ETH
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: {
-            number: 18500015,
-            timestamp: 1700000015,
-            hash: "0xblock138",
-          },
-          transaction: {
-            hash: "0xtxhash_shim_test",
-          },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: SHIM_CONTRACT,
+          // Using the shim contract address
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 1n,
+          unitMintPrice: 1000000000000000000n,
+          // 1 ETH
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb: testDb,
-      });
+        block: {
+          number: 18500015,
+          timestamp: 1700000015,
+          hash: "0xblock138",
+        },
+        transaction: {
+          hash: "0xtxhash_shim_test",
+        },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
+
+      const mockDbUpdated = testDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
       const saleId = `${event.chainId}_${event.transaction.hash}_1`; // Overture shim starts at token ID 1
-      const actualSale = mockDbUpdated.entities.Sale.get(saleId);
+      const actualSale = await mockDbUpdated.Sale.get(saleId);
 
       // Verify sale was created
       assert(actualSale, "Sale should be created");
@@ -666,10 +683,10 @@ describe("Seadrop event tests", () => {
       assert.notEqual(actualSale.offerTokens[0], SHIM_CONTRACT);
 
       // Verify NFT contract entity was created for the actual contract, not shim
-      const actualNFTContract = mockDbUpdated.entities.NFTContract.get(
+      const actualNFTContract = await mockDbUpdated.NFTContract.get(
         ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()
       );
-      const shimNFTContract = mockDbUpdated.entities.NFTContract.get(SHIM_CONTRACT.toLowerCase());
+      const shimNFTContract = await mockDbUpdated.NFTContract.get(SHIM_CONTRACT.toLowerCase());
 
       assert(actualNFTContract, "NFT contract should be created for actual ArtBlocks contract");
       assert.equal(actualNFTContract.id, ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase());
@@ -677,24 +694,24 @@ describe("Seadrop event tests", () => {
       assert(!shimNFTContract, "NFT contract should NOT be created for shim contract");
 
       // Verify NFT token was created for the actual contract
-      const actualNFTToken = mockDbUpdated.entities.NFTToken.get(
+      const actualNFTToken = await mockDbUpdated.NFTToken.get(
         `${ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()}:1`
       );
-      const shimNFTToken = mockDbUpdated.entities.NFTToken.get(`${SHIM_CONTRACT.toLowerCase()}:1`);
+      const shimNFTToken = await mockDbUpdated.NFTToken.get(`${SHIM_CONTRACT.toLowerCase()}:1`);
 
       assert(actualNFTToken, "NFT token should be created for actual ArtBlocks contract");
       assert.equal(actualNFTToken.contract_id, ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase());
       assert(!shimNFTToken, "NFT token should NOT be created for shim contract");
 
       // Verify SaleNFT junction uses the actual contract
-      const allSaleNfts = mockDbUpdated.entities.SaleNFT.getAll();
+      const allSaleNfts = await mockDbUpdated.SaleNFT.getAll();
       const saleNfts = allSaleNfts.filter((sn) => sn.sale_id === actualSale?.id);
       assert.equal(saleNfts.length, 1, "Sale should have one NFT junction");
       assert.equal(saleNfts[0].nftToken_id, `${ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()}:1`);
 
       // Verify SeadropCounter was created for the actual contract, not shim
-      const actualCounter = mockDbUpdated.entities.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
-      const shimCounter = mockDbUpdated.entities.SeadropCounter.get(SHIM_CONTRACT);
+      const actualCounter = await mockDbUpdated.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
+      const shimCounter = await mockDbUpdated.SeadropCounter.get(SHIM_CONTRACT);
 
       assert(actualCounter, "SeadropCounter should be created for actual ArtBlocks contract");
       assert.equal(actualCounter.id, ACTUAL_ARTBLOCKS_CONTRACT);
@@ -703,40 +720,42 @@ describe("Seadrop event tests", () => {
     });
 
     it("Does not replace other contracts with ArtBlocks contract", async () => {
-      const testDb = MockDb.createMockDb();
-      const OTHER_CONTRACT = "0x3333333333333333333333333333333333333333";
+      const testDb = createTestIndexer();
+      const OTHER_CONTRACT = "0x41A322b28D0fF354040e2CbC676F0320d8c8850d";
       const ACTUAL_ARTBLOCKS_CONTRACT = "0x000000DAb303a194b3F55d4702B24740ad5a2F00";
 
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: OTHER_CONTRACT, // Using a different contract address
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 1n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: {
-            number: 18500016,
-            timestamp: 1700000016,
-            hash: "0xblock139",
-          },
-          transaction: {
-            hash: "0xtxhash_other_contract",
-          },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: OTHER_CONTRACT,
+          // Using a different contract address
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 1n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb: testDb,
-      });
+        block: {
+          number: 18500016,
+          timestamp: 1700000016,
+          hash: "0xblock139",
+        },
+        transaction: {
+          hash: "0xtxhash_other_contract",
+        },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
+
+      const mockDbUpdated = testDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
 
       const saleId = `${event.chainId}_${event.transaction.hash}_0`;
-      const actualSale = mockDbUpdated.entities.Sale.get(saleId);
+      const actualSale = await mockDbUpdated.Sale.get(saleId);
 
       // Verify sale was created
       assert(actualSale, "Sale should be created");
@@ -746,8 +765,8 @@ describe("Seadrop event tests", () => {
       assert.notEqual(actualSale.offerTokens[0], ACTUAL_ARTBLOCKS_CONTRACT);
 
       // Verify NFT contract entity was created for the original contract
-      const otherNFTContract = mockDbUpdated.entities.NFTContract.get(OTHER_CONTRACT.toLowerCase());
-      const artblocksNFTContract = mockDbUpdated.entities.NFTContract.get(
+      const otherNFTContract = await mockDbUpdated.NFTContract.get(OTHER_CONTRACT.toLowerCase());
+      const artblocksNFTContract = await mockDbUpdated.NFTContract.get(
         ACTUAL_ARTBLOCKS_CONTRACT.toLowerCase()
       );
 
@@ -757,8 +776,8 @@ describe("Seadrop event tests", () => {
       assert(!artblocksNFTContract, "NFT contract should NOT be created for ArtBlocks contract");
 
       // Verify SeadropCounter was created for the original contract
-      const otherCounter = mockDbUpdated.entities.SeadropCounter.get(OTHER_CONTRACT);
-      const artblocksCounter = mockDbUpdated.entities.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
+      const otherCounter = await mockDbUpdated.SeadropCounter.get(OTHER_CONTRACT);
+      const artblocksCounter = await mockDbUpdated.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
 
       assert(otherCounter, "SeadropCounter should be created for original contract");
       assert.equal(otherCounter.id, OTHER_CONTRACT);
@@ -766,67 +785,68 @@ describe("Seadrop event tests", () => {
     });
 
     it("Handles multiple mints with shim replacement correctly", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
       const SHIM_CONTRACT = "0x8Cfbe812a0CFEB6775900534389Ca72eD27741e3";
       const ACTUAL_ARTBLOCKS_CONTRACT = "0x000000DAb303a194b3F55d4702B24740ad5a2F00";
 
       // First mint through shim
-      const event1 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: SHIM_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 2n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500017, timestamp: 1700000017, hash: "0xblock140" },
-          transaction: { hash: "0xtxhash_shim_mint1" },
-          chainId: 1,
-          logIndex: 1,
+      const event1 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: SHIM_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 2n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      let currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event1,
-        mockDb: testDb,
-      });
+        block: { number: 18500017, timestamp: 1700000017, hash: "0xblock140" },
+        transaction: { hash: "0xtxhash_shim_mint1" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
+
+      let currentDb = testDb;
+      await currentDb.process({ chains: { 1: { simulate: [event1] } } });
 
       // Second mint through shim
-      const event2 = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: SHIM_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 3n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500018, timestamp: 1700000018, hash: "0xblock141" },
-          transaction: { hash: "0xtxhash_shim_mint2" },
-          chainId: 1,
-          logIndex: 1,
+      const event2 = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: SHIM_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 3n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      currentDb = await Seadrop.SeaDropMint.processEvent({
-        event: event2,
-        mockDb: currentDb,
-      });
+        block: { number: 18500018, timestamp: 1700000018, hash: "0xblock141" },
+        transaction: { hash: "0xtxhash_shim_mint2" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
+
+      await currentDb.process({ chains: { 1: { simulate: [event2] } } });
 
       // Verify counter was maintained for the actual ArtBlocks contract
-      const counter = currentDb.entities.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
+      const counter = await currentDb.SeadropCounter.get(ACTUAL_ARTBLOCKS_CONTRACT);
       assert(counter, "SeadropCounter should exist for ArtBlocks contract");
       assert.equal(counter.counter, BigInt(6)); // Overture shim starts at 1, so 1 + 2 + 3 = 6
 
       // Verify all sales use the actual ArtBlocks contract
-      const sale1_0 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_1`); // Overture shim starts at 1
-      const sale1_1 = currentDb.entities.Sale.get(`${event1.chainId}_${event1.transaction.hash}_2`);
-      const sale2_0 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_3`);
-      const sale2_1 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_4`);
-      const sale2_2 = currentDb.entities.Sale.get(`${event2.chainId}_${event2.transaction.hash}_5`);
+      const sale1_0 = await currentDb.Sale.get(`${event1.chainId}_${event1.transaction.hash}_1`); // Overture shim starts at 1
+      const sale1_1 = await currentDb.Sale.get(`${event1.chainId}_${event1.transaction.hash}_2`);
+      const sale2_0 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_3`);
+      const sale2_1 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_4`);
+      const sale2_2 = await currentDb.Sale.get(`${event2.chainId}_${event2.transaction.hash}_5`);
 
       assert(sale1_0, "First mint sale 1 should exist");
       assert(sale1_1, "First mint sale 2 should exist");
@@ -852,32 +872,34 @@ describe("Seadrop event tests", () => {
 
   describe("Edge cases and error handling", () => {
     it("Handles same payer and minter correctly", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
       const SAME_ADDRESS = "0xcccccccccccccccccccccccccccccccccccccccc";
 
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: SAME_ADDRESS,
-        feeRecipient: FEE_RECIPIENT_ADDRESS,
-        payer: SAME_ADDRESS, // Same as minter
-        quantityMinted: 1n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500013, timestamp: 1700000013, hash: "0xblock136" },
-          transaction: { hash: "0xtxhash_same_address" },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: SAME_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: SAME_ADDRESS,
+          // Same as minter
+          quantityMinted: 1n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb: testDb,
-      });
+        block: { number: 18500013, timestamp: 1700000013, hash: "0xblock136" },
+        transaction: { hash: "0xtxhash_same_address" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      const actualSale = mockDbUpdated.entities.Sale.get(
+      const mockDbUpdated = testDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const actualSale = await mockDbUpdated.Sale.get(
         `${event.chainId}_${event.transaction.hash}_0`
       );
 
@@ -889,7 +911,7 @@ describe("Seadrop event tests", () => {
 
       // Verify buy junction was created for the recipient (minter)
       const saleId = `${event.chainId}_${event.transaction.hash}_0`;
-      const buyJunction = mockDbUpdated.entities.AccountBuy.get(
+      const buyJunction = await mockDbUpdated.AccountBuy.get(
         `${SAME_ADDRESS.toLowerCase()}:${saleId}`
       );
 
@@ -898,32 +920,33 @@ describe("Seadrop event tests", () => {
     });
 
     it("Handles different fee recipients correctly", async () => {
-      const testDb = MockDb.createMockDb();
+      const testDb = createTestIndexer();
       const DIFFERENT_FEE_RECIPIENT = "0xdddddddddddddddddddddddddddddddddddddddd";
 
-      const event = Seadrop.SeaDropMint.createMockEvent({
-        nftContract: NFT_CONTRACT,
-        minter: MINTER_ADDRESS,
-        feeRecipient: DIFFERENT_FEE_RECIPIENT,
-        payer: PAYER_ADDRESS,
-        quantityMinted: 1n,
-        unitMintPrice: 1000000000000000000n,
-        feeBps: 250n,
-        dropStageIndex: 0n,
-        mockEventData: {
-          block: { number: 18500014, timestamp: 1700000014, hash: "0xblock137" },
-          transaction: { hash: "0xtxhash_different_fee" },
-          chainId: 1,
-          logIndex: 1,
+      const event = {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: DIFFERENT_FEE_RECIPIENT,
+          payer: PAYER_ADDRESS,
+          quantityMinted: 1n,
+          unitMintPrice: 1000000000000000000n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
         },
-      });
 
-      const mockDbUpdated = await Seadrop.SeaDropMint.processEvent({
-        event,
-        mockDb: testDb,
-      });
+        block: { number: 18500014, timestamp: 1700000014, hash: "0xblock137" },
+        transaction: { hash: "0xtxhash_different_fee" },
+        chainId: 1,
+        logIndex: 1,
+      } as const;
 
-      const actualSale = mockDbUpdated.entities.Sale.get(
+      const mockDbUpdated = testDb;
+      await mockDbUpdated.process({ chains: { 1: { simulate: [event] } } });
+
+      const actualSale = await mockDbUpdated.Sale.get(
         `${event.chainId}_${event.transaction.hash}_0`
       );
 

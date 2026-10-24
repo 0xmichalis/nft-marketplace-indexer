@@ -21,3 +21,6 @@ yarn.lock
 *.gen.ts
 *.res.js
 *.bs.js
+
+.envio/
+envio-env.d.ts

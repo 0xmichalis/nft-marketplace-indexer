@@ -1,4 +1,4 @@
-import { Seaport, Sale } from "generated";
+import { indexer, type Sale } from "envio";
 
 import {
   getOrCreateAccount,
@@ -8,7 +8,7 @@ import {
 } from "./entities/EntityHelpers";
 
 // Helper function to extract offer data from OrderFulfilled event
-function getOfferData(offer: any[]): {
+function getOfferData(offer: readonly any[]): {
   offerItemTypes: number[];
   offerTokens: string[];
   offerIdentifiers: string[];
@@ -41,7 +41,7 @@ function getOfferData(offer: any[]): {
 }
 
 // Helper function to extract consideration data from OrderFulfilled event
-function getConsiderationData(consideration: any[]): {
+function getConsiderationData(consideration: readonly any[]): {
   considerationItemTypes: number[];
   considerationTokens: string[];
   considerationIdentifiers: string[];
@@ -146,7 +146,7 @@ function preprocessSaleData(
   };
 }
 
-Seaport.OrderFulfilled.handler(async ({ event, context }) => {
+indexer.onEvent({ contract: "Seaport", event: "OrderFulfilled" }, async ({ event, context }) => {
   // Skip events where offerer equals recipient. From what I have noticed,
   // transactions that contain self-orders also contain another OrderFulfilled
   // event that is the order we should process.
