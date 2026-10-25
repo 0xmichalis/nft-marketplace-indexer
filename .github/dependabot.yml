@@ -5,9 +5,23 @@ updates:
     schedule:
       interval: "weekly"
     groups:
+      typescript-eslint:
+        patterns:
+          - "typescript"
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+          - "eslint"
+          - "eslint-*"
+      graphql:
+        patterns:
+          - "graphql"
+          - "graphql-request"
       npm-dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
