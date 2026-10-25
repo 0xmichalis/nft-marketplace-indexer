@@ -372,7 +372,11 @@ export function assertOrdersEqual(actual: any, expected: any, message?: string) 
     timestamp: order.timestamp.toString(),
   });
 
-  assert.deepEqual(normalize(actual), normalize(expected), message);
+  if (message === undefined) {
+    assert.deepEqual(normalize(actual), normalize(expected));
+  } else {
+    assert.deepEqual(normalize(actual), normalize(expected), message);
+  }
 }
 
 /**
@@ -559,7 +563,11 @@ export function assertSuperRareSalesEqual(actual: any, expected: any, message?: 
     timestamp: sale.timestamp.toString(),
   });
 
-  assert.deepEqual(normalize(actual), normalize(expected), message);
+  if (message === undefined) {
+    assert.deepEqual(normalize(actual), normalize(expected));
+  } else {
+    assert.deepEqual(normalize(actual), normalize(expected), message);
+  }
 }
 
 // Seaport OrderFulfilled event ABI
