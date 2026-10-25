@@ -9,7 +9,9 @@ updates:
         patterns:
           - "typescript"
           - "typescript-eslint"
+          - "@typescript/*"
           - "@typescript-eslint/*"
+          - "@types/node"
           - "eslint"
           - "eslint-*"
       graphql:
