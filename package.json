@@ -57,8 +57,15 @@
       "@humanfs/node@<0.16.8": "^0.16.8",
       "envio>express": "^4.22.3",
       "flatted@<3.4.2": "^3.4.2",
+      "mocha>glob": "^14.0.2",
       "mocha>serialize-javascript": "^7.1.3",
       "viem>ws": "^8.21.0"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-g3hv-75wg-m249",
+        "GHSA-gcqx-w48m-w2h4"
+      ]
     }
   },
   "license": "Apache-2.0",
