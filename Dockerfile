@@ -9,7 +9,7 @@ RUN apt-get update && \
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN npm install -g pnpm@10.34.9
+RUN npm install -g pnpm@10.34.9 && npm uninstall -g npm
 
 WORKDIR /envio-indexer
 
@@ -20,6 +20,7 @@ COPY ./schema.graphql ./schema.graphql
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm envio codegen
+RUN pnpm prune --prod --ignore-scripts
 
 COPY ./ ./
 
