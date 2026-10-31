@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
   pull_request:
+  schedule:
+    # Rebuild weekly so base image fixes ship without a code change.
+    - cron: "47 5 * * 1"
 
 jobs:
   build-and-test:
@@ -65,23 +68,59 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: [build-and-test]
     runs-on: ubuntu-latest
+    # Serialize publishing so an older run cannot move latest after a newer one.
+    concurrency:
+      group: build-and-push
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
-      id-token: write # Required for OIDC auth (optional for GHCR)
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/nft-marketplace-indexer
     steps:
+      # This job holds the image signing key, so its actions are pinned.
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build Docker image
-        run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/nft-marketplace-indexer
-          docker build -t $IMAGE_NAME:latest .
+        run: docker build --pull -t "$IMAGE_NAME:sha-$GITHUB_SHA" .
 
-      - name: Push to GHCR
+      - name: Push commit tag
+        id: push
         run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/nft-marketplace-indexer
-          docker push $IMAGE_NAME:latest
+          set -o pipefail
+          digest=$(docker push "$IMAGE_NAME:sha-$GITHUB_SHA" | sed -n 's/^.*digest: \(sha256:[0-9a-f]\{64\}\).*$/\1/p')
+          test -n "$digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # Verifiers use cosign v2, which reads this signature format.
+          cosign-release: v2.6.5
+
+      - name: Sign image
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          IMAGE: ${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
+        run: |
+          cosign sign --yes --recursive --tlog-upload=false --key env://COSIGN_PRIVATE_KEY "$IMAGE"
+          cosign public-key --key env://COSIGN_PRIVATE_KEY > "$RUNNER_TEMP/cosign.pub"
+          cosign verify --insecure-ignore-tlog=true --key "$RUNNER_TEMP/cosign.pub" "$IMAGE" > /dev/null
+
+      # latest only ever points at a signed digest of main's newest commit.
+      - name: Publish latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
+        run: |
+          if [ "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" != "$GITHUB_SHA" ]; then
+            echo "::notice::main has moved past $GITHUB_SHA; leaving latest to the newer run."
+            exit 0
+          fi
+          docker buildx imagetools create --prefer-index=false --tag "$IMAGE_NAME:latest" "$IMAGE"
