@@ -119,7 +119,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           IMAGE: ${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
         run: |
-          if [ "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" != "$GITHUB_SHA" ]; then
+          main_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          test -n "$main_sha"
+          if [ "$main_sha" != "$GITHUB_SHA" ]; then
             echo "::notice::main has moved past $GITHUB_SHA; leaving latest to the newer run."
             exit 0
           fi
