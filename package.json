@@ -51,7 +51,7 @@
     "node": ">=22.15.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@10.0.0",
+  "packageManager": "pnpm@10.34.9",
   "pnpm": {
     "overrides": {
       "@humanfs/node@<0.16.8": "^0.16.8",
