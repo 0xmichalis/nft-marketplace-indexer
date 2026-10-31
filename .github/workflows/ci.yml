@@ -109,7 +109,15 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           IMAGE: ${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
         run: |
-          cosign sign --yes --recursive --key env://COSIGN_PRIVATE_KEY "$IMAGE"
+          for attempt in 1 2 3; do
+            if cosign sign --yes --recursive --key env://COSIGN_PRIVATE_KEY "$IMAGE"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep "$((attempt * 10))"
+          done
           cosign public-key --key env://COSIGN_PRIVATE_KEY > "$RUNNER_TEMP/cosign.pub"
           cosign verify --key "$RUNNER_TEMP/cosign.pub" "$IMAGE" > /dev/null
 
