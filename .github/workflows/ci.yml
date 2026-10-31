@@ -109,9 +109,9 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           IMAGE: ${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
         run: |
-          cosign sign --yes --recursive --tlog-upload=false --key env://COSIGN_PRIVATE_KEY "$IMAGE"
+          cosign sign --yes --recursive --key env://COSIGN_PRIVATE_KEY "$IMAGE"
           cosign public-key --key env://COSIGN_PRIVATE_KEY > "$RUNNER_TEMP/cosign.pub"
-          cosign verify --insecure-ignore-tlog=true --key "$RUNNER_TEMP/cosign.pub" "$IMAGE" > /dev/null
+          cosign verify --key "$RUNNER_TEMP/cosign.pub" "$IMAGE" > /dev/null
 
       # latest only ever points at a signed digest of main's newest commit.
       - name: Publish latest
