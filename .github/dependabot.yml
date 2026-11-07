@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: "weekly"
       day: saturday
+    ignore:
+      # The indexer refuses to resume storage written by any other envio
+      # version, so an upgrade means a full reindex and is done by hand.
+      - dependency-name: "envio"
     groups:
       typescript-eslint:
         patterns:
