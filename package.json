@@ -35,7 +35,7 @@
     "eslint-plugin-import-x": "^4.18.1",
     "husky": "^9.1.7",
     "mocha": "12.0.3",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "prettier-plugin-packagejson": "^3.1.0",
     "tsx": "^4.21.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
@@ -45,7 +45,7 @@
     "envio": "3.14.0",
     "graphql": "^17.1.0",
     "graphql-request": "^7.4.0",
-    "viem": "^2.57.18"
+    "viem": "^2.58.0"
   },
   "engines": {
     "node": ">=22.15.0",
