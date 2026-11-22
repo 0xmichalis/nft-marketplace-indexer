@@ -4,12 +4,12 @@ import { GraphQLClient } from "graphql-request";
  * GraphQL client for querying the deployed indexer endpoint
  */
 export class IndexerGraphQLClient {
-  private client: GraphQLClient;
-  private endpoint: string;
+  readonly #client: GraphQLClient;
+  private readonly hostname: string;
 
   constructor(endpoint: string) {
-    this.endpoint = endpoint;
-    this.client = new GraphQLClient(endpoint, {
+    this.hostname = URL.parse(endpoint)?.hostname || "unknown hostname";
+    this.#client = new GraphQLClient(endpoint, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -21,18 +21,20 @@ export class IndexerGraphQLClient {
    */
   async query<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
     try {
-      return await this.client.request<T>(query, variables);
-    } catch (error) {
-      console.error("GraphQL query failed:", error);
-      throw error;
+      return await this.#client.request<T>(query, variables);
+    } catch {
+      // Transport and GraphQL errors can include credentials in nested request or response details.
+      const message = `GraphQL query failed for ${this.hostname}`;
+      console.error(message);
+      throw new Error(message);
     }
   }
 
   /**
-   * Get the endpoint URL
+   * Get the endpoint hostname for diagnostics
    */
   getEndpoint(): string {
-    return this.endpoint;
+    return this.hostname;
   }
 }
 
