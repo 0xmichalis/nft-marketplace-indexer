@@ -5,7 +5,6 @@ import {
   type Account,
   type NFTContract,
   type NFTToken,
-  type SaleNFT,
   type AccountBuy,
   type AccountSell,
   type AccountSwap,
@@ -55,21 +54,20 @@ export async function getOrCreateNFTContract(
 }
 
 /**
- * Get or create an NFTToken entity
+ * Get or create an NFTToken for an existing NFTContract.
  */
 export async function getOrCreateNFTToken(
   context: EvmOnEventContext,
-  contractAddress: string,
+  contract: NFTContract,
   tokenId: string
 ): Promise<NFTToken> {
-  const contractId = contractAddress.toLowerCase();
-  const tokenKey = `${contractId}:${tokenId}`;
+  const tokenKey = `${contract.id}:${tokenId}`;
   let token = await context.NFTToken.get(tokenKey);
 
   if (!token) {
     token = {
       id: tokenKey,
-      contract_id: contractId, // This will establish the relationship to NFTContract
+      contract_id: contract.id,
       tokenId: tokenId,
     };
     context.NFTToken.set(token);
@@ -132,6 +130,21 @@ export function getNFTItems(
 }
 
 /**
+ * Link a sale to an existing NFTToken.
+ */
+export function createSaleNFTJunction(
+  context: EvmOnEventContext,
+  saleId: string,
+  token: NFTToken
+): void {
+  context.SaleNFT.set({
+    id: `${saleId}:${token.id}`,
+    sale_id: saleId,
+    nftToken_id: token.id,
+  });
+}
+
+/**
  * Create SaleNFT junction entities for a sale
  */
 export async function createSaleNFTJunctions(
@@ -139,22 +152,10 @@ export async function createSaleNFTJunctions(
   saleId: string,
   nftItems: Array<{ contractAddress: string; tokenId: string; itemType: number }>
 ): Promise<void> {
-  for (const nftItem of nftItems) {
-    const { contractAddress, tokenId } = nftItem;
-
-    // Ensure NFT contract and token exist
-    await getOrCreateNFTContract(context, contractAddress);
-    const nftToken = await getOrCreateNFTToken(context, contractAddress, tokenId);
-
-    // Create SaleNFT junction entity
-    const saleNftId = `${saleId}:${nftToken.id}`;
-    const saleNft: SaleNFT = {
-      id: saleNftId,
-      sale_id: saleId,
-      nftToken_id: nftToken.id,
-    };
-
-    context.SaleNFT.set(saleNft);
+  for (const { contractAddress, tokenId } of nftItems) {
+    const contract = await getOrCreateNFTContract(context, contractAddress);
+    const token = await getOrCreateNFTToken(context, contract, tokenId);
+    createSaleNFTJunction(context, saleId, token);
   }
 }
 
