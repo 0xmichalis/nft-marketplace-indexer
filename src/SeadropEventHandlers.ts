@@ -3,19 +3,24 @@ import { indexer, type Sale, type SeadropCounter } from "envio";
 import {
   getOrCreateAccount,
   getOrCreateNFTContract,
-  createSaleNFTJunctions,
+  getOrCreateNFTToken,
+  createSaleNFTJunction,
   createAccountBuy,
 } from "./entities/EntityHelpers";
 
-// SeaDropMint(address indexed nftContract, address indexed minter, address indexed feeRecipient,
-//              address payer, uint256 quantityMinted, uint256 unitMintPrice, uint256 feeBps, uint256 dropStageIndex)
-// Map to Sale entity using payer as offerer and minter as recipient.
+// Limit one mint's expansion to the maximum length of a JavaScript array.
+const MAX_MINT_QUANTITY = 0xffff_ffffn;
+
 indexer.onEvent({ contract: "Seadrop", event: "SeaDropMint" }, async ({ event, context }) => {
+  const { payer, minter, quantityMinted, unitMintPrice } = event.params;
+  if (quantityMinted < 0n || quantityMinted > MAX_MINT_QUANTITY) {
+    throw new RangeError(`SeaDrop mint quantity must be between 0 and ${MAX_MINT_QUANTITY}`);
+  }
+
   const timestamp = BigInt(event.block.timestamp);
 
-  // Ensure Account entities exist for payer (offerer) and minter (recipient)
-  await getOrCreateAccount(context, event.params.payer);
-  await getOrCreateAccount(context, event.params.minter);
+  await getOrCreateAccount(context, payer);
+  const minterAccount = await getOrCreateAccount(context, minter);
 
   // Replace MFC's SeaDropXArtBlocksShim contract with the actual ArtBlocks contract
   const isOvertureShim = event.params.nftContract === "0x8Cfbe812a0CFEB6775900534389Ca72eD27741e3";
@@ -23,8 +28,7 @@ indexer.onEvent({ contract: "Seadrop", event: "SeaDropMint" }, async ({ event, c
     ? "0x000000DAb303a194b3F55d4702B24740ad5a2F00"
     : event.params.nftContract;
 
-  // Ensure the NFT contract exists for reference
-  await getOrCreateNFTContract(context, nftContract);
+  const contract = await getOrCreateNFTContract(context, nftContract);
 
   // We keep track of the total number of tokens minted for this contract
   // to determine the exact token IDs that were minted by this sale.
@@ -37,19 +41,13 @@ indexer.onEvent({ contract: "Seadrop", event: "SeaDropMint" }, async ({ event, c
     };
   }
 
-  // Calculate the exact token IDs that were minted
-  const quantityMinted = Number(event.params.quantityMinted);
   const startTokenId = contractCounter.counter;
-  const mintedTokenIds: string[] = [];
-
-  for (let i = 0; i < quantityMinted; i++) {
-    mintedTokenIds.push((startTokenId + BigInt(i)).toString());
-  }
+  const endTokenId = startTokenId + quantityMinted;
 
   // Update the counter
   const updatedCounter: SeadropCounter = {
     ...contractCounter,
-    counter: startTokenId + BigInt(quantityMinted),
+    counter: endTokenId,
   };
   context.SeadropCounter.set(updatedCounter);
 
@@ -57,61 +55,37 @@ indexer.onEvent({ contract: "Seadrop", event: "SeaDropMint" }, async ({ event, c
   //  the tx or do an RPC call to the Seadrop contract to determine the creator. Since these are
   //  mint events, this is not a high priority.
   const seller = "0x0000000000000000000000000000000000000000";
+  const pricePerToken = unitMintPrice.toString();
 
-  // Create individual sales for each token ID
-  for (const tokenId of mintedTokenIds) {
-    // Create unique sale ID that includes token ID
+  // The counter is the next token ID, so this mint owns [startTokenId, endTokenId).
+  for (let nextTokenId = startTokenId; nextTokenId < endTokenId; nextTokenId += 1n) {
+    const tokenId = nextTokenId.toString();
     const saleId = `${event.chainId}_${event.transaction.hash}_${tokenId}`;
 
-    // Create offer arrays for single NFT
-    const offerItemTypes = [2]; // ERC721
-    const offerTokens = [nftContract];
-    const offerIdentifiers = [tokenId];
-    const offerAmounts = ["1"]; // Always 1 for ERC721
-
-    // Create consideration arrays for single token payment
-    const considerationItemTypes = [0]; // Native ETH
-    const considerationTokens = ["0x0000000000000000000000000000000000000000"]; // ETH address
-    const considerationIdentifiers = ["0"]; // No identifier for ETH
-    const considerationAmounts = [event.params.unitMintPrice.toString()]; // Price per token
-    const considerationRecipients = [seller];
-
-    // Create the Sale entity for this individual token
     const saleEntity: Sale = {
       id: saleId,
       timestamp,
       transactionHash: event.transaction.hash,
       market: "Seadrop",
 
-      offerer_id: seller.toLowerCase(),
-      recipient_id: event.params.minter.toLowerCase(),
+      offerer_id: seller,
+      recipient_id: minterAccount.id,
 
-      offerItemTypes,
-      offerTokens,
-      offerIdentifiers,
-      offerAmounts,
+      offerItemTypes: [2], // ERC721
+      offerTokens: [nftContract],
+      offerIdentifiers: [tokenId],
+      offerAmounts: ["1"],
 
-      considerationItemTypes,
-      considerationTokens,
-      considerationIdentifiers,
-      considerationAmounts,
-      considerationRecipients,
+      considerationItemTypes: [0], // Native ETH
+      considerationTokens: ["0x0000000000000000000000000000000000000000"],
+      considerationIdentifiers: ["0"],
+      considerationAmounts: [pricePerToken],
+      considerationRecipients: [seller],
     };
 
-    // Save the Sale entity
     context.Sale.set(saleEntity);
-
-    // Create NFT junction for this individual token
-    const nftItems = [
-      {
-        contractAddress: nftContract,
-        tokenId,
-        itemType: 2,
-      },
-    ];
-    await createSaleNFTJunctions(context, saleId, nftItems);
-
-    // Account-level sale classification
+    const token = await getOrCreateNFTToken(context, contract, tokenId);
+    createSaleNFTJunction(context, saleId, token);
     createAccountBuy(context, saleEntity.recipient_id, saleId);
   }
 });

@@ -18,6 +18,79 @@ describe("Seadrop event tests", () => {
   const NFT_CONTRACT = "0x1111111111111111111111111111111111111111";
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+  describe("Mint range processing", () => {
+    const block = { number: 18500000, timestamp: 1700000000, hash: "0xblock123" };
+
+    function mint(logIndex: number, quantityMinted: bigint) {
+      return {
+        contract: "Seadrop",
+        event: "SeaDropMint",
+        params: {
+          nftContract: NFT_CONTRACT,
+          minter: MINTER_ADDRESS,
+          feeRecipient: FEE_RECIPIENT_ADDRESS,
+          payer: PAYER_ADDRESS,
+          quantityMinted,
+          unitMintPrice: 100n,
+          feeBps: 250n,
+          dropStageIndex: 0n,
+        },
+        block,
+        transaction: { hash: `0xmint_${logIndex}` },
+        chainId: 1,
+        logIndex,
+      } as const;
+    }
+
+    it("continues from a stored counter across mints in the same block", async () => {
+      const startTokenId = 2n ** 53n - 1n;
+      mockDb.SeadropCounter.set({ id: NFT_CONTRACT, counter: startTokenId });
+      const firstMint = mint(1, 2n);
+      const emptyMint = mint(2, 0n);
+      const lastMint = mint(3, 1n);
+
+      await mockDb.process({
+        chains: {
+          1: { endBlock: block.number, simulate: [firstMint, emptyMint, lastMint] },
+        },
+      });
+
+      const counter = await mockDb.SeadropCounter.getOrThrow(NFT_CONTRACT);
+      assert.strictEqual(counter.counter, startTokenId + 3n);
+      const sales = await mockDb.Sale.getAll();
+      assert.deepStrictEqual(sales.map(({ id }) => id).sort(), [
+        `1_${firstMint.transaction.hash}_${startTokenId}`,
+        `1_${firstMint.transaction.hash}_${startTokenId + 1n}`,
+        `1_${lastMint.transaction.hash}_${startTokenId + 2n}`,
+      ]);
+      for (const sale of sales) {
+        const [tokenId] = sale.offerIdentifiers;
+        const nftTokenId = `${NFT_CONTRACT}:${tokenId}`;
+        const junction = await mockDb.SaleNFT.getOrThrow(`${sale.id}:${nftTokenId}`);
+        assert.strictEqual(junction.nftToken_id, nftTokenId);
+        assert.strictEqual((await mockDb.NFTToken.getOrThrow(nftTokenId)).tokenId, tokenId);
+      }
+    });
+
+    it("rejects a mint beyond the expansion limit before changing entities", async () => {
+      const counter = { id: NFT_CONTRACT, counter: 10n };
+      mockDb.SeadropCounter.set(counter);
+
+      await assert.rejects(
+        mockDb.process({ chains: { 1: { simulate: [mint(1, 2n ** 32n)] } } }),
+        /SeaDrop mint quantity must be between 0 and 4294967295/
+      );
+
+      assert.deepStrictEqual(await mockDb.SeadropCounter.get(NFT_CONTRACT), counter);
+      assert.deepStrictEqual(await mockDb.Account.getAll(), []);
+      assert.deepStrictEqual(await mockDb.NFTContract.getAll(), []);
+      assert.deepStrictEqual(await mockDb.NFTToken.getAll(), []);
+      assert.deepStrictEqual(await mockDb.Sale.getAll(), []);
+      assert.deepStrictEqual(await mockDb.SaleNFT.getAll(), []);
+      assert.deepStrictEqual(await mockDb.AccountBuy.getAll(), []);
+    });
+  });
+
   describe("SeaDropMint event tests", () => {
     it("Sale is created correctly for single mint", async () => {
       // Creating mock for Seadrop SeaDropMint event
