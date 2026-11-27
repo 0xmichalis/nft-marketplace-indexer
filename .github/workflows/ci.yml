@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Node dependencies
-        uses: 0xmichalis/repo-tooling/actions/setup-node@d4f4c5b6fac20dbb0bb4cf85f5280d6948c4a3c8 # v1.1.0
+        uses: 0xmichalis/repo-tooling/actions/setup-node@bfddb8ac3808b18b4dfff99cb030099b8331f0ad
         with:
           node-version: "24"
 
@@ -74,7 +74,7 @@ jobs:
       # latest only ever points at a signed digest of main's newest commit.
       - name: Publish signed image
         id: push
-        uses: 0xmichalis/repo-tooling/actions/publish-image@d4f4c5b6fac20dbb0bb4cf85f5280d6948c4a3c8 # v1.1.0
+        uses: 0xmichalis/repo-tooling/actions/publish-image@bfddb8ac3808b18b4dfff99cb030099b8331f0ad
         with:
           image: ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           signing-key: ${{ secrets.COSIGN_PRIVATE_KEY }}
