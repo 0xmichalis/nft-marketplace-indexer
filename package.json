@@ -45,7 +45,7 @@
     "envio": "3.14.0",
     "graphql": "^17.1.0",
     "graphql-request": "^7.4.0",
-    "viem": "^2.58.0"
+    "viem": "^2.58.6"
   },
   "engines": {
     "node": ">=22.15.0",

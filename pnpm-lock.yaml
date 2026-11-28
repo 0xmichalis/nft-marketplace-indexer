@@ -27,8 +27,8 @@ importers:
         specifier: ^7.4.0
         version: 7.4.0(graphql@17.1.0)
       viem:
-        specifier: ^2.58.0
-        version: 2.58.0(@typescript/typescript6@6.0.2)
+        specifier: ^2.58.6
+        version: 2.58.6(@typescript/typescript6@6.0.2)
     devDependencies:
       '@types/chai':
         specifier: ^5.2.3
@@ -1659,8 +1659,8 @@ packages:
       typescript:
         optional: true
 
-  viem@2.58.0:
-    resolution: {integrity: sha512-oBGZGy6VptLmAATtEua71a7FzCXT5y74dQoeDP8EDHmBsWhQ34rXeHKz6tHeciKWnJ3zBT1u8sby8tAtg0gouA==}
+  viem@2.58.6:
+    resolution: {integrity: sha512-dBxl7nsHrENzD3HR/wOeeH2NcfXSwoEibTSZKJR7kcQOyqIDa50O27H2JU2ZMAQqS1QrEojaYCy6dLWIsdb9cA==}
     peerDependencies:
       mppx: '>=0.17.0'
       typescript: '>=5.0.4'
@@ -3195,7 +3195,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  viem@2.58.0(@typescript/typescript6@6.0.2):
+  viem@2.58.6(@typescript/typescript6@6.0.2):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
